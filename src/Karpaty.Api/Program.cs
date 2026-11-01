@@ -5,6 +5,7 @@ using Karpaty.Api.DBCommunication.Reposetories;
 using Karpaty.Api.Services;
 using Karpaty.Api.Services.Interfaces;
 using MongoDB.Driver;
+using Karpaty.Api.Seeder;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,7 +37,7 @@ builder.Services.AddScoped<IPlaceService, PlaceService>();
 
 // --- 3. Налаштування API: Контролери, CORS, Swagger ---
 builder.Services.AddControllers();
-
+builder.Services.AddScoped<IPlaceService, PlaceService>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -51,7 +52,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-
 // --- 4. Налаштування Middleware (конвеєра запитів) ---
 
 // Підключення Swagger
