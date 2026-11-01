@@ -4,7 +4,8 @@ using Karpaty.Api.Models;
 
 namespace Karpaty.Api.Seeder
 {
-    public static class DbSeeder
+    
+    public static class DBSeeder
     {
         public static async Task SeedPlacesAsync(IServiceProvider serviceProvider)
         {
