@@ -1,8 +1,14 @@
 using Karpaty.Api.DBCommunication;
+// Додайте ваші using для сервісів та репозиторіїв, якщо вони в інших папках
+using Karpaty.Api.DBCommunication.Repositories.Interfaces;
+using Karpaty.Api.DBCommunication.Reposetories;
+using Karpaty.Api.Services;
+using Karpaty.Api.Services.Interfaces;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- 1. Налаштування бази даних MongoDB ---
 builder.Services.Configure<MongoDBSettings>(
     builder.Configuration.GetSection("MongoDBSettings"));
 
@@ -14,22 +20,21 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
     return new MongoClient(connectionString);
 });
 
-builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
-{
-    var client = serviceProvider.GetRequiredService<IMongoClient>();
-    var databaseName = builder.Configuration["MongoDBSettings:DatabaseName"];
-    return client.GetDatabase(databaseName);
-});
-
+// Залишаємо ТІЛЬКИ ОДНУ реєстрацію бази даних (Singleton - це правильна практика для MongoDB)
 builder.Services.AddSingleton<IMongoDatabase>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
-    var dbName = builder.Configuration["MongoDbSettings:DatabaseName"] ?? "Karpaty";
+    // Беремо назву бази з конфігурації. Якщо її там немає - використовуємо дефолтну "Karpatyyy"
+    var dbName = builder.Configuration["MongoDBSettings:DatabaseName"] ?? "Karpatyyy";
     return client.GetDatabase(dbName);
 });
-// ----------------------------------------------
 
-// Твоя частина Backend 2: Контролери, CORS, Swagger
+// --- 2. Реєстрація ваших власних сервісів (ОБОВ'ЯЗКОВО!) ---
+builder.Services.AddScoped<IPlaceRepository, PlaceRepository>();
+builder.Services.AddScoped<IPlaceService, PlaceService>();
+// Якщо додасте DbSeeder, не забудьте його тут також викликати після builder.Build()
+
+// --- 3. Налаштування API: Контролери, CORS, Swagger ---
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
@@ -46,6 +51,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// --- 4. Налаштування Middleware (конвеєра запитів) ---
 
 // Підключення Swagger
 app.UseSwagger();
