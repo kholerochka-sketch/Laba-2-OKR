@@ -1,13 +1,24 @@
+using Karpaty.Api.DBCommunication;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Частина Backend 1 (реєстрація MongoDB) ---
-// (Ви маєте домовитися, щоб ці рядки були в Program.cs, інакше HealthController не зможе зробити ping)
-builder.Services.AddSingleton<IMongoClient>(_ =>
+builder.Services.Configure<MongoDBSettings>(
+    builder.Configuration.GetSection("MongoDBSettings"));
+
+builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
-    var connectionString = builder.Configuration["MongoDbSettings:ConnectionString"] ?? "mongodb://localhost:27017";
+    var connectionString = builder.Configuration.GetConnectionString("MongoDBSettings:ConnectionString")
+                           ?? builder.Configuration["MongoDBSettings:ConnectionString"];
+
     return new MongoClient(connectionString);
+});
+
+builder.Services.AddScoped<IMongoDatabase>(serviceProvider =>
+{
+    var client = serviceProvider.GetRequiredService<IMongoClient>();
+    var databaseName = builder.Configuration["MongoDBSettings:DatabaseName"];
+    return client.GetDatabase(databaseName);
 });
 
 builder.Services.AddSingleton<IMongoDatabase>(sp =>
