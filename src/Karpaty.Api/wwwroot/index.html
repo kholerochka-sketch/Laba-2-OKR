@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Карпати без натовпу</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Додаємо іконки для карток F1 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <header class="header">
@@ -15,16 +17,17 @@
     </header>
 
     <main class="container">
-        <!-- Секція "Здоров'я API" (для перевірки F0) -->
+        <!-- Секція "Здоров'я API" (F0) -->
         <section class="section" id="health-section">
             <h2>Стан системи</h2>
             <div id="health-status" class="status-box">Завантаження...</div>
         </section>
 
-        <!-- Каркаси майбутніх секцій F1–F4 -->
+        <!-- Секція Цікаві місця (F1) -->
         <section class="section" id="places-section">
             <h2>Цікаві місця</h2>
             <div id="places-list" class="cards-grid">
+                <!-- Сюди автоматично завантажуватимуться картки або UI-стани -->
                 <p class="placeholder">Дані завантажуються...</p>
             </div>
         </section>
@@ -32,7 +35,7 @@
         <section class="section" id="tips-section">
             <h2>Поради для походу</h2>
             <div id="tips-list" class="cards-grid">
-                <p class="placeholder">Дані завантажуються...</p>
+                <p class="placeholder">Дані завантажуються у наступних фічах...</p>
             </div>
         </section>
 
