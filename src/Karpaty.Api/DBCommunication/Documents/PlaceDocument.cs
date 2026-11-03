@@ -4,6 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace Karpaty.Api.DBCommunication.Documents
 {
+    [BsonIgnoreExtraElements]
     public class PlaceDocument
     {
         [BsonId]
