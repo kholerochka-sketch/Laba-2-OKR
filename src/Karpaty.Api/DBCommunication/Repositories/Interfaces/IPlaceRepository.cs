@@ -9,5 +9,6 @@ namespace Karpaty.Api.DBCommunication.Repositories.Interfaces
         Task<Place?> GetByIdAsync(string id);
         Task UpdateAsync(Place place);
         Task DeleteAsync(string id);
+        Task<List<Place>> GetByCategoryAsync(PlaceCategory category);
     }
 }
