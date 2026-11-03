@@ -69,7 +69,13 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             return new Place
             {
                 id = document.id,
+                name = document.name,
+                category = document.category,
+                region = document.region,
                 description = document.description,
+                difficulty = document.difficulty,
+                latitude = document.latitude,
+                longitude = document.longitude,
                 imageUrl = document.imageUrl
             };
         }
@@ -79,7 +85,13 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             return new PlaceDocument
             {
                 id = place.id,
+                name = place.name,
+                category = place.category,
+                region = place.region,
                 description = place.description,
+                difficulty = place.difficulty,
+                latitude = place.latitude,
+                longitude = place.longitude,
                 imageUrl = place.imageUrl
             };
         }
