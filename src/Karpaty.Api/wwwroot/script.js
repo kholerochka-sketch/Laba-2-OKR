@@ -1,15 +1,16 @@
 const API_URL = "/api";
+const API_BASE_URL = API_URL; // Щоб уникнути помилок у старих функціях
 
 document.addEventListener("DOMContentLoaded", () => {
     checkHealth();
     loadPlaces();
+    loadTips(); 
     setupFilterButtons();
     setupModalEvents();
 });
 
-// ==========================================
+
 // 1. Сперевірка Health API (F0)
-// ==========================================
 async function checkHealth() {
     const healthStatusEl = document.getElementById("health-status");
     if (!healthStatusEl) return;
@@ -27,9 +28,8 @@ async function checkHealth() {
     }
 }
 
-// ==========================================
+
 // 2. Завантаження місць та фільтрація (F1 + F2)
-// ==========================================
 async function loadPlaces(category = "") {
     const placesListEl = document.getElementById("places-list");
     if (!placesListEl) return;
@@ -82,9 +82,45 @@ async function loadPlaces(category = "") {
     }
 }
 
-// ==========================================
-// 3. Обробка кнопок фільтрів (F2)
-// ==========================================
+// 3. Завантаження порад для походу (F3) 🟢
+async function loadTips() {
+    const tipsListEl = document.getElementById("tips-list");
+    if (!tipsListEl) return;
+
+    tipsListEl.innerHTML = `<p class="placeholder"><i class="fa-solid fa-spinner fa-spin"></i> Завантаження порад...</p>`;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/tips`);
+        if (!response.ok) throw new Error("Не вдалося завантажити поради");
+
+        const tips = await response.json();
+
+        if (!tips || tips.length === 0) {
+            tipsListEl.innerHTML = `<p class="placeholder">Пораду поки не додано.</p>`;
+            return;
+        }
+
+        tipsListEl.innerHTML = tips.map(tip => `
+            <div class="tip-card">
+                <span class="tip-category"><i class="fa-solid fa-lightbulb"></i> ${tip.category || 'Загальне'}</span>
+                <h3>${tip.title}</h3>
+                <p>${tip.text}</p>
+            </div>
+        `).join("");
+
+    } catch (error) {
+        tipsListEl.innerHTML = `
+            <div class="error-box">
+                <p>⚠️ Помилка: ${error.message}</p>
+                <button onclick="loadTips()" class="retry-btn">
+                    <i class="fa-solid fa-rotate-right"></i> Спробувати ще раз
+                </button>
+            </div>
+        `;
+    }
+}
+
+// 4. Обробка кнопок фільтрів (F2)
 function setupFilterButtons() {
     const buttons = document.querySelectorAll(".filter-btn");
     buttons.forEach(btn => {
@@ -98,9 +134,7 @@ function setupFilterButtons() {
     });
 }
 
-// ==========================================
-// 4. Модальне вікно деталей місця (F2)
-// ==========================================
+// 5. Модальне вікно деталей місця (F2)
 async function openPlaceDetails(id) {
     const modal = document.getElementById("placeModal");
     const modalDetails = document.getElementById("modalDetails");
