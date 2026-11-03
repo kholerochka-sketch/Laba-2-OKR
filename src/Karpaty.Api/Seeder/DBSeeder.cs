@@ -21,9 +21,9 @@ namespace Karpaty.Api.Seeder
                     new Place
                     {
                         name = "Водоспад Шипіт",
-                        category = PlaceCategory.Водоспад,
+                        category = PlaceCategory.waterfall,
                         region = PlaceRegion.Західні_Карпати,
-                        difficulty = PlaceDifficulty.Легко,
+                        difficulty = PlaceDifficulty.easy,
                         latitude = 48.6565f,
                         longitude = 23.2694f,
                         description = "Один з найкрасивіших водоспадів Закарпаття, розташований біля підніжжя гори Гемба. Висота падіння води — 14 метрів.",
@@ -32,9 +32,9 @@ namespace Karpaty.Api.Seeder
                     new Place
                     {
                         name = "Полонина Боржава",
-                        category = PlaceCategory.Полонина,
+                        category = PlaceCategory.meadow,
                         region = PlaceRegion.Західні_Карпати,
-                        difficulty = PlaceDifficulty.Середнє,
+                        difficulty = PlaceDifficulty.medium,
                         latitude = 48.6253f,
                         longitude = 23.2798f,
                         description = "Гірський масив (полонина) на Закарпатті. Найдовша полонина Закарпаття, ідеальна для піших походів і збору чорниці.",
@@ -43,9 +43,9 @@ namespace Karpaty.Api.Seeder
                     new Place
                     {
                         name = "Говерла",
-                        category = PlaceCategory.Оглядовий_Майданчик,
+                        category = PlaceCategory.viewpoint,
                         region = PlaceRegion.Східні_Карпати,
-                        difficulty = PlaceDifficulty.Тяжко,
+                        difficulty = PlaceDifficulty.hard,
                         latitude = 48.1602f,
                         longitude = 24.5000f,
                         description = "Найвища вершина Українських Карпат та найвища точка України (2061 м). Популярний туристичний маршрут.",
@@ -54,9 +54,9 @@ namespace Karpaty.Api.Seeder
                     new Place
                     {
                         name = "Манявський водоспад",
-                        category = PlaceCategory.Водоспад,
+                        category = PlaceCategory.waterfall,
                         region = PlaceRegion.Східні_Карпати,
-                        difficulty = PlaceDifficulty.Середнє,
+                        difficulty = PlaceDifficulty.medium,
                         latitude = 48.6247f,
                         longitude = 24.3644f,
                         description = "Один із найвищих водоспадів Українських Карпат (близько 20 метрів). Розташований у мальовничій гірській ущелині.",
@@ -65,9 +65,9 @@ namespace Karpaty.Api.Seeder
                     new Place
                     {
                         name = "Полонина Хом'яків",
-                        category = PlaceCategory.Полонина,
+                        category = PlaceCategory.meadow,
                         region = PlaceRegion.Східні_Карпати,
-                        difficulty = PlaceDifficulty.Середнє,
+                        difficulty = PlaceDifficulty.medium,
                         latitude = 48.3739f,
                         longitude = 24.5004f,
                         description = "Велика галявина біля підніжжя гори Хом'як, де влітку випасають худобу. Звідси відкриваються чудові краєвиди на Чорногірський хребет.",
@@ -76,9 +76,9 @@ namespace Karpaty.Api.Seeder
                     new Place
                     {
                         name = "Водоспад Пробій",
-                        category = PlaceCategory.Водоспад,
+                        category = PlaceCategory.waterfall,
                         region = PlaceRegion.Східні_Карпати,
-                        difficulty = PlaceDifficulty.Легко,
+                        difficulty = PlaceDifficulty.easy,
                         latitude = 48.4390f,
                         longitude = 24.5397f,
                         description = "Повноводний водоспад на річці Прут у місті Яремче. Вода тут падає з 8-метрової висоти. Є пішохідний місток над водоспадом.",
@@ -87,9 +87,9 @@ namespace Karpaty.Api.Seeder
                     new Place
                     {
                         name = "Скелі Довбуша",
-                        category = PlaceCategory.Оглядовий_Майданчик,
+                        category = PlaceCategory.viewpoint,
                         region = PlaceRegion.Східні_Карпати,
-                        difficulty = PlaceDifficulty.Легко,
+                        difficulty = PlaceDifficulty.easy,
                         latitude = 49.0436f,
                         longitude = 23.6828f,
                         description = "Унікальний скельно-печерний комплекс. Скелі утворилися понад 70 млн років тому на дні палеогенового моря.",
@@ -98,9 +98,9 @@ namespace Karpaty.Api.Seeder
                     new Place
                     {
                         name = "Піп Іван Чорногірський",
-                        category = PlaceCategory.Оглядовий_Майданчик,
+                        category = PlaceCategory.viewpoint,
                         region = PlaceRegion.Східні_Карпати,
-                        difficulty = PlaceDifficulty.Тяжко,
+                        difficulty = PlaceDifficulty.hard,
                         latitude = 48.0475f,
                         longitude = 24.6277f,
                         description = "Одна з найвищих вершин (2028 м). Відома завдяки кам'яній обсерваторії «Білий Слон» на самій вершині.",
@@ -143,3 +143,4 @@ namespace Karpaty.Api.Seeder
 }
     }
 }
+

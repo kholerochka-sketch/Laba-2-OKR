@@ -43,7 +43,10 @@ builder.Services.AddScoped<IPlaceService, PlaceService>();
 // Якщо додасте DbSeeder, не забудьте його тут також викликати після builder.Build()
 
 // --- 3. Налаштування API: Контролери, CORS, Swagger ---
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(
+        new System.Text.Json.Serialization.JsonStringEnumConverter()));
+        
 builder.Services.AddScoped<IPlaceService, PlaceService>();
 builder.Services.AddCors(options =>
 {
