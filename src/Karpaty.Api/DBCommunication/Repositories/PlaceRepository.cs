@@ -1,6 +1,7 @@
 ﻿using Karpaty.Api.DBCommunication.Documents;
 using Karpaty.Api.DBCommunication.Repositories.Interfaces;
 using Karpaty.Api.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Linq;
 
@@ -15,6 +16,24 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             _collection = database.GetCollection<PlaceDocument>("places");
         }
 
+        public async Task<Place?> GetByIdAsync(string id)
+        {
+            if (!ObjectId.TryParse(id, out _))
+            {
+                return null;
+            }
+
+            var document = await _collection.Find(x => x.id == id).FirstOrDefaultAsync();
+            return document != null ? ToModel(document) : null;
+        }
+
+        public async Task<List<Place>> GetByCategoryAsync(PlaceCategory category)
+        {
+            var filter = Builders<PlaceDocument>.Filter.Eq(doc => doc.category, category);
+
+            var documents = await _collection.Find(filter).ToListAsync();
+            return documents.Select(ToModel).ToList();
+        }
         public async Task CreateAsync(Place place)
         {
             var document = ToDocument(place);
@@ -31,12 +50,7 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             return documents.Select(ToModel).ToList();
         }
 
-        public async Task<Place?> GetByIdAsync(string id)
-        {
-            var document = await _collection.Find(x => x.id == id).FirstOrDefaultAsync();
-
-            return document != null ? ToModel(document) : null;
-        }
+        
 
         public async Task UpdateAsync(Place place)
         {
@@ -55,7 +69,13 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             return new Place
             {
                 id = document.id,
+                name = document.name,
+                category = document.category,
+                region = document.region,
                 description = document.description,
+                difficulty = document.difficulty,
+                latitude = document.latitude,
+                longitude = document.longitude,
                 imageUrl = document.imageUrl
             };
         }
@@ -65,7 +85,13 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             return new PlaceDocument
             {
                 id = place.id,
+                name = place.name,
+                category = place.category,
+                region = place.region,
                 description = place.description,
+                difficulty = place.difficulty,
+                latitude = place.latitude,
+                longitude = place.longitude,
                 imageUrl = place.imageUrl
             };
         }
