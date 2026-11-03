@@ -50,7 +50,7 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             return documents.Select(ToModel).ToList();
         }
 
-        
+
 
         public async Task UpdateAsync(Place place)
         {
@@ -64,30 +64,37 @@ namespace Karpaty.Api.DBCommunication.Reposetories
         }
 
 
-       private static Place ToModel(PlaceDocument d) => new()
-{
-    id = d.id,
-    name = d.name,
-    category = d.category,
-    region = d.region,
-    description = d.description,
-    difficulty = d.difficulty,
-    latitude = d.latitude,
-    longitude = d.longitude,
-    imageUrl = d.imageUrl
-};
+        private Place ToModel(PlaceDocument document)
+        {
+            return new Place
+            {
+                id = document.id,
+                name = document.name,
+                category = document.category,
+                region = document.region,
+                description = document.description,
+                difficulty = document.difficulty,
+                latitude = document.latitude,
+                longitude = document.longitude,
+                imageUrl = document.imageUrl
+            };
+        }
 
-private static PlaceDocument ToDocument(Place p) => new()
-{
-    id = p.id,
-    name = p.name,
-    category = p.category,
-    region = p.region,
-    description = p.description,
-    difficulty = p.difficulty,
-    latitude = p.latitude,
-    longitude = p.longitude,
-    imageUrl = p.imageUrl
-};
+        private PlaceDocument ToDocument(Place place)
+        {
+            return new PlaceDocument
+            {
+                id = place.id,
+                name = place.name,
+                category = place.category,
+                region = place.region,
+                description = place.description,
+                difficulty = place.difficulty,
+                latitude = place.latitude,
+                longitude = place.longitude,
+                imageUrl = place.imageUrl
+            };
+        }
+
     }
 }

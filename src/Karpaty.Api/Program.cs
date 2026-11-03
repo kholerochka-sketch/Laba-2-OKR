@@ -1,11 +1,12 @@
 using Karpaty.Api.DBCommunication;
+using Karpaty.Api.DBCommunication.Reposetories;
 // Додайте ваші using для сервісів та репозиторіїв, якщо вони в інших папках
 using Karpaty.Api.DBCommunication.Repositories.Interfaces;
-using Karpaty.Api.DBCommunication.Reposetories;
+using Karpaty.Api.Seeder;
 using Karpaty.Api.Services;
 using Karpaty.Api.Services.Interfaces;
 using MongoDB.Driver;
-using Karpaty.Api.Seeder;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,7 +42,12 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 builder.Services.AddScoped<IPlaceRepository, PlaceRepository>();
 builder.Services.AddScoped<IPlaceService, PlaceService>();
 // Якщо додасте DbSeeder, не забудьте його тут також викликати після builder.Build()
-
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Конверт енама і текст
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 // --- 3. Налаштування API: Контролери, CORS, Swagger ---
 builder.Services.AddControllers();
 builder.Services.AddScoped<IPlaceService, PlaceService>();
