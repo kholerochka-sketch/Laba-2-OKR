@@ -19,9 +19,28 @@ namespace Karpaty.Api.Services
             return await _placeRepository.GetAllAsync();
         }
 
-        public async Task<Models.Place> GetPlaceByIdAsync(string id)
+        public async Task<Models.Place?> GetPlaceByIdAsync(string id)
         {
-            return await _placeRepository.GetByIdAsync(id);
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return null;
+            }
+
+            var place = await _placeRepository.GetByIdAsync(id);
+
+            return place;
+        }
+
+        public async Task<IEnumerable<Place>> GetPlacesByCategoryAsync(string categoryString)
+        {
+            if (!Enum.TryParse<PlaceCategory>(categoryString, true, out var parsedCategory) ||
+                !Enum.IsDefined(typeof(PlaceCategory), parsedCategory))
+            {
+                var allowedValues = string.Join(", ", Enum.GetNames(typeof(PlaceCategory)));
+                throw new ArgumentException($"Невідома категорія '{categoryString}'. Допустимі значення: {allowedValues}");
+            }
+
+            return await _placeRepository.GetByCategoryAsync(parsedCategory);
         }
 
         public async Task<Place> CreatePlaceAsync(CreatePlaceDTO dto)
