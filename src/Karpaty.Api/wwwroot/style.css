@@ -205,3 +205,83 @@ body {
     color: var(--text-color);
     font-size: 0.95rem;
 }
+
+/* --- СТИЛІ ДЛЯ СИСТЕМИ ВІДГУКІВ (Фіча F4) --- */
+
+.reviews-section {
+    margin-top: 25px;
+    border-top: 2px solid #eaeaea;
+    padding-top: 20px;
+    text-align: left;
+}
+
+    .reviews-section h3,
+    .reviews-section h4 {
+        color: #2c3e50;
+        margin-bottom: 12px;
+    }
+
+#reviews-container {
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+    /* Окремий блок одного відгуку */
+    #reviews-container > div {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+/* Стилі для форми відгуків */
+#review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+    #review-form input,
+    #review-form select,
+    #review-form textarea {
+        padding: 10px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: border-color 0.2s;
+    }
+
+        #review-form input:focus,
+        #review-form select:focus,
+        #review-form textarea:focus {
+            border-color: #1e5631;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(30, 86, 49, 0.1);
+        }
+
+    #review-form button[type="submit"] {
+        padding: 12px;
+        background-color: #1e5631;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 15px;
+        transition: background-color 0.2s;
+    }
+
+        #review-form button[type="submit"]:hover {
+            background-color: #143d22;
+        }
+
+/* Покращення для модального вікна, щоб воно гарно прокручувалося */
+.modal-content {
+    max-height: 85vh;
+    overflow-y: auto;
+}
