@@ -42,12 +42,12 @@ public class PlacesController : ControllerBase
             return Ok(places);
 
         var categoryMap = new Dictionary<string, PlaceCategory>(
-            StringComparer.OrdinalIgnoreCase)
-        {
-            ["waterfall"] = PlaceCategory.Водоспад,
-            ["viewpoint"] = PlaceCategory.Оглядовий_Майданчик,
-            ["meadow"] = PlaceCategory.Полонина
-        };
+    StringComparer.OrdinalIgnoreCase)
+{
+    ["waterfall"] = PlaceCategory.waterfall,
+    ["viewpoint"] = PlaceCategory.viewpoint,
+    ["meadow"] = PlaceCategory.meadow
+};
 
         if (!categoryMap.TryGetValue(category, out var selectedCategory))
         {

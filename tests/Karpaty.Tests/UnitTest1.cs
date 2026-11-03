@@ -273,19 +273,19 @@ namespace Karpaty.Tests
                 {
                     id = "1",
                     name = "Водоспад Шипіт",
-                    category = PlaceCategory.Водоспад
+                    category = PlaceCategory.waterfall
                 },
                 new Place
                 {
                     id = "2",
                     name = "Оглядовий майданчик",
-                    category = PlaceCategory.Оглядовий_Майданчик
+                    category = PlaceCategory.viewpoint
                 },
                 new Place
                 {
                     id = "3",
                     name = "Полонина Боржава",
-                    category = PlaceCategory.Полонина
+                    category = PlaceCategory.meadow
                 }
             };
 
@@ -310,7 +310,7 @@ namespace Karpaty.Tests
             Assert.Single(returnedPlaces);
 
             Assert.All(returnedPlaces, p =>
-                Assert.Equal(PlaceCategory.Водоспад, p.category));
+                Assert.Equal(PlaceCategory.waterfall, p.category));
         }
 
         [Fact]
