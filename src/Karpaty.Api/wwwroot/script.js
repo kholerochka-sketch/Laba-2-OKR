@@ -1,93 +1,80 @@
 const API_URL = "/api";
 
-async function apiGet(endpoint) {
-    const response = await fetch(`${API_URL}${endpoint}`);
-    if (!response.ok) {
-        throw new Error(`Помилка HTTP: ${response.status}`);
-    }
-    return await response.json();
-}
+document.addEventListener("DOMContentLoaded", () => {
+    checkHealth();
+    loadPlaces();
+    setupFilterButtons();
+    setupModalEvents();
+});
 
+// ==========================================
+// 1. Сперевірка Health API (F0)
+// ==========================================
 async function checkHealth() {
-    const statusEl = document.getElementById("health-status");
+    const healthStatusEl = document.getElementById("health-status");
+    if (!healthStatusEl) return;
+
     try {
-        const data = await apiGet("/health");
-        statusEl.textContent = `API: ${data.status} | База даних: ${data.database}`;
-        statusEl.className = "status-box status-ok";
+        const response = await fetch(`${API_BASE_URL}/health`);
+        if (!response.ok) throw new Error("Сервер недоступний");
+
+        const data = await response.json();
+        healthStatusEl.className = "status-box success";
+        healthStatusEl.innerHTML = `🟢 Статус: ${data.status || 'OK'} | БД: ${data.database || 'Connected'}`;
     } catch (error) {
-        statusEl.textContent = "Не вдалося підключитися до API (очікуємо бекенд)";
-        statusEl.className = "status-box status-error";
+        healthStatusEl.className = "status-box error";
+        healthStatusEl.innerHTML = `🔴 Помилка підключення до API: ${error.message}`;
     }
 }
 
-// Функція для F1: завантаження та рендеринг карток місць
-async function fetchPlaces() {
-    const container = document.getElementById("places-list");
+// ==========================================
+// 2. Завантаження місць та фільтрація (F1 + F2)
+// ==========================================
+async function loadPlaces(category = "") {
+    const placesListEl = document.getElementById("places-list");
+    if (!placesListEl) return;
 
-    // 1. ⏳ UI-стан: «Завантаження…» (спінер)
-    container.innerHTML = `
-        <div class="ui-state loading-state" style="grid-column: 1 / -1; text-align: center; padding: 30px;">
-            <div class="spinner" style="width: 35px; height: 35px; border: 4px solid #e3e3e3; border-top: 4px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px auto;"></div>
-            <p>Завантаження цікавих місць…</p>
-        </div>
-    `;
+    // Стан завантаження (UI-state 1)
+    placesListEl.innerHTML = `<p class="placeholder"><i class="fa-solid fa-spinner fa-spin"></i> Завантаження місць...</p>`;
 
     try {
-        const places = await apiGet("/places");
+        const url = category
+            ? `${API_BASE_URL}/places?category=${encodeURIComponent(category)}`
+            : `${API_BASE_URL}/places`;
 
-        // 2. 📭 UI-стан: «Немає місць» (якщо прийшов порожній масив)
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Не вдалося завантажити список місць");
+
+        const places = await response.json();
+
+        // Порожній масив (UI-state 2)
         if (!places || places.length === 0) {
-            container.innerHTML = `
-                <div class="ui-state empty-state" style="grid-column: 1 / -1; text-align: center; padding: 30px; color: #666;">
-                    <i class="fa-solid fa-map-location-dot" style="font-size: 30px; color: #bdc3c7; margin-bottom: 10px;"></i>
-                    <p>На жаль, наразі немає доступних місць у базі.</p>
-                </div>
-            `;
+            placesListEl.innerHTML = `<p class="placeholder">Місць у цій категорії поки немає.</p>`;
             return;
         }
 
-        // Рендеринг реальних карток із MongoDB Atlas
-        container.innerHTML = "";
-        places.forEach(place => {
-            const card = document.createElement("div");
-            card.className = "place-card";
-
-            // Безпечне зчитування полів (підтримує і маленькі, і великі літери з бекенду)
-            const imageUrl = place.imageUrl || place.ImageUrl || "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80";
-            const title = place.title || place.Title || "Карпатська локація";
-            const category = place.category || place.Category || "Маршрут";
-            const region = place.region || place.Region || "Карпати";
-            const difficulty = place.difficulty || place.Difficulty || "Середня";
-            const description = place.description || place.Description || "Опис відсутній.";
-
-            card.innerHTML = `
-                <div class="place-image-wrapper" style="position: relative; height: 160px; overflow: hidden; border-radius: 6px 6px 0 0;">
-                    <img src="${imageUrl}" alt="${title}" style="width: 100%; height: 100%; object-fit: cover;">
-                    <span class="place-badge" style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem;">
-                        <i class="fa-solid fa-tag"></i> ${category}
-                    </span>
-                </div>
-                <div class="place-info" style="padding: 15px; display: flex; flex-direction: column; gap: 8px; flex-grow: 1;">
-                    <h3 style="color: var(--primary-color); font-size: 1.1rem;">${title}</h3>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #666; background: #f8f9fa; padding: 6px 8px; border-radius: 4px;">
-                        <span><i class="fa-solid fa-location-dot"></i> ${region}</span>
-                        <span><i class="fa-solid fa-gauge"></i> ${difficulty}</span>
+        // Відображення карток
+        placesListEl.innerHTML = places.map(place => {
+            const id = place.id || place._id;
+            return `
+                <div class="card" onclick="openPlaceDetails('${id}')">
+                    <img src="${place.imageUrl || 'https://via.placeholder.com/300x200?text=Karpaty'}" alt="${place.name}">
+                    <div class="card-content">
+                        <h3>${place.name}</h3>
+                        <p class="category-badge"><i class="fa-solid fa-tag"></i> ${place.category || 'Загальне'}</p>
+                        <p>${place.description ? place.description.substring(0, 90) + '...' : 'Опис відсутній'}</p>
+                        <button class="btn-details">Детальніше</button>
                     </div>
-                    <p style="font-size: 0.9rem; color: #555;">${description}</p>
                 </div>
             `;
-            container.appendChild(card);
-        });
+        }).join("");
 
     } catch (error) {
-        console.error("Помилка завантаження місць:", error);
-
-        // 3. ⚠️ UI-стан: «Помилка завантаження» + кнопка «Спробувати ще раз»
-        container.innerHTML = `
-            <div class="ui-state error-state" style="grid-column: 1 / -1; text-align: center; padding: 30px;">
-                <i class="fa-solid fa-triangle-exclamation" style="font-size: 35px; color: #e74c3c; margin-bottom: 10px;"></i>
-                <p style="color: #721c24; margin-bottom: 12px;">Не вдалося завантажити дані з сервера.</p>
-                <button class="retry-btn" onclick="fetchPlaces()" style="background: var(--primary-color); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+        // Стан помилки з кнопкою повтору (UI-state 3)
+        placesListEl.innerHTML = `
+            <div class="error-box">
+                <p>⚠️ Помилка: ${error.message}</p>
+                <button onclick="loadPlaces('${category}')" class="retry-btn">
                     <i class="fa-solid fa-rotate-right"></i> Спробувати ще раз
                 </button>
             </div>
@@ -95,12 +82,70 @@ async function fetchPlaces() {
     }
 }
 
-// Додаємо анімацію спінера в динаміку
-const styleSheet = document.createElement("style");
-styleSheet.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-document.head.appendChild(styleSheet);
+// ==========================================
+// 3. Обробка кнопок фільтрів (F2)
+// ==========================================
+function setupFilterButtons() {
+    const buttons = document.querySelectorAll(".filter-btn");
+    buttons.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            buttons.forEach(b => b.classList.remove("active"));
+            e.target.classList.add("active");
 
-document.addEventListener("DOMContentLoaded", () => {
-    checkHealth();
-    fetchPlaces(); // Викликаємо завантаження карток для F1
-});
+            const selectedCategory = e.target.getAttribute("data-category");
+            loadPlaces(selectedCategory);
+        });
+    });
+}
+
+// ==========================================
+// 4. Модальне вікно деталей місця (F2)
+// ==========================================
+async function openPlaceDetails(id) {
+    const modal = document.getElementById("placeModal");
+    const modalDetails = document.getElementById("modalDetails");
+
+    if (!modal || !modalDetails) return;
+
+    modalDetails.innerHTML = `<p><i class="fa-solid fa-spinner fa-spin"></i> Завантаження деталей...</p>`;
+    modal.style.display = "flex";
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/places/${id}`);
+        if (!response.ok) throw new Error("Не вдалося отримати деталі про місце");
+
+        const place = await response.json();
+
+        modalDetails.innerHTML = `
+            <h2>${place.name}</h2>
+            <p><strong>Категорія:</strong> ${place.category || 'Не вказано'}</p>
+            <p><strong>Регіон / Локація:</strong> ${place.region || 'Карпати'}</p>
+            <p><strong>Опис:</strong> ${place.description || 'Повний опис відсутній.'}</p>
+            ${place.latitude && place.longitude ? `
+                <a class="map-link" href="https://www.google.com/maps/search/?api=1&query=${place.latitude},${place.longitude}" target="_blank">
+                    <i class="fa-solid fa-map-location-dot"></i> Відкрити на Google Карті
+                </a>
+            ` : ''}
+        `;
+    } catch (error) {
+        modalDetails.innerHTML = `<p class="error-text">⚠️ Помилка завантаження: ${error.message}</p>`;
+    }
+}
+
+// Події закриття модального вікна
+function setupModalEvents() {
+    const modal = document.getElementById("placeModal");
+    const closeBtn = document.querySelector(".close-btn");
+
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+            modal.style.display = "none";
+        });
+    }
+
+    window.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+    });
+}
