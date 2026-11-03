@@ -113,6 +113,33 @@ namespace Karpaty.Api.Seeder
                     await repository.CreateAsync(place);
                 }
             }
+        
+        
+        
         }
+   public static async Task SeedTipsAsync(IServiceProvider serviceProvider)
+{
+    using var scope = serviceProvider.CreateScope();
+    var repository = scope.ServiceProvider.GetRequiredService<ITipRepository>();
+
+    var existing = await repository.GetAllAsync();
+    if (existing.Count > 0) return;
+
+    var tips = new List<Tip>
+    {
+        new() { title = "Зручне взуття", category = "спорядження", text = "Беріть трекінгове взуття з протектором і вже розношене: нове майже гарантовано натре." },
+        new() { title = "Одяг шарами", category = "спорядження", text = "Базовий шар, утеплювач і вітро-водозахисна куртка. У горах температура різко змінюється." },
+        new() { title = "Скажіть, куди йдете", category = "безпека", text = "Повідомте рідним маршрут і час повернення. Збережіть номер рятувальної служби 112." },
+        new() { title = "Заряджений телефон і павербанк", category = "безпека", text = "Завантажте офлайн-карту маршруту: зв'язок у горах часто зникає." },
+        new() { title = "Дивіться прогноз", category = "погода", text = "Перевіряйте прогноз перед виходом. Грози в горах небезпечні, найкраще вирушати зранку." },
+        new() { title = "Не залишайте стежку", category = "поведінка", text = "Не зрізайте повороти й не лякайте тварин. Тримайтеся марковування, щоб не збивати природу." },
+        new() { title = "Забирайте сміття з собою", category = "прибирання", text = "Усе, що принесли, заберіть назад: упаковку, фольгу, недопалки." }
+    };
+
+    foreach (var tip in tips)
+    {
+        await repository.CreateAsync(tip);
+    }
+}
     }
 }

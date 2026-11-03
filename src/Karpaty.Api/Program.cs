@@ -14,6 +14,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<MongoDBSettings>(
     builder.Configuration.GetSection("MongoDBSettings"));
 
+builder.Services.AddScoped<ITipRepository, TipRepository>();
+builder.Services.AddScoped<ITipService, TipService>();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(
+        new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
     var connectionString = builder.Configuration.GetConnectionString("MongoDBSettings:ConnectionString")
@@ -59,6 +66,9 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 // --- 4. Налаштування Middleware (конвеєра запитів) ---
+
+await DBSeeder.SeedPlacesAsync(app.Services);
+await DBSeeder.SeedTipsAsync(app.Services);
 
 // Підключення Swagger
 app.UseSwagger();
