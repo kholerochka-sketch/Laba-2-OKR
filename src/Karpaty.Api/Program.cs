@@ -49,7 +49,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 // --- 3. Налаштування API: Контролери, CORS, Swagger ---
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(
+        new System.Text.Json.Serialization.JsonStringEnumConverter()));
+        
 builder.Services.AddScoped<IPlaceService, PlaceService>();
 builder.Services.AddCors(options =>
 {
