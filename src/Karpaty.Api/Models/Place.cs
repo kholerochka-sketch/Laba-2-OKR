@@ -12,12 +12,12 @@
         public float longitude { get; set; }
         public string imageUrl { get; set; }
     }
-    public enum PlaceCategory
-    {
-        Водоспад,
-        Оглядовий_Майданчик,
-        Полонина
-    }
+   public enum PlaceCategory
+{
+    waterfall,
+    viewpoint,
+    meadow
+}
     public enum PlaceRegion
     {
         Східні_Карпати,
@@ -25,9 +25,9 @@
         Південні_Карпати
     }
     public enum PlaceDifficulty
-    {
-        Легко,
-        Середнє,
-        Тяжко
-    }
+{
+    easy,
+    medium,
+    hard
+}
 }
