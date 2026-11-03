@@ -1,205 +1,510 @@
 ﻿
-using Karpaty.Api.Services;
-using Karpaty.Api.DBCommunication.Repositories.Interfaces;
-using Karpaty.Api.DTO;
-using Karpaty.Api.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
+using Moq;
+using MongoDB.Driver;
+using MongoDB.Bson;
+using Microsoft.AspNetCore.Mvc;
+
+using Karpaty.Api.Models;
+using Karpaty.Api.DTO;
+using Karpaty.Api.Services;
+using Karpaty.Api.Services.Interfaces;
+using Karpaty.Api.Controllers;
+using Karpaty.Api.DBCommunication.Documents;
+using Karpaty.Api.DBCommunication.Repositories.Interfaces;
+using Karpaty.Api.DBCommunication.Reposetories;
 
 namespace Karpaty.Tests
 {
+    // =====================================
+    // PLACE SERVICE TESTS
+    // =====================================
+
     public class PlaceServiceTests
     {
-        private readonly FakePlaceRepository _repository;
+        private readonly Mock<IPlaceRepository> _repositoryMock;
         private readonly PlaceService _service;
 
         public PlaceServiceTests()
         {
-            _repository = new FakePlaceRepository();
-            _service = new PlaceService(_repository);
+            _repositoryMock = new Mock<IPlaceRepository>();
+            _service = new PlaceService(_repositoryMock.Object);
         }
 
-        // 1. Перевірка отримання всіх місць
         [Fact]
         public async Task GetAllPlacesAsync_ReturnsAllPlaces()
         {
-            var place = CreateTestPlace();
-            _repository.Places.Add(place);
+            var places = new List<Place>
+            {
+                new Place { id = "1", description = "First" },
+                new Place { id = "2", description = "Second" }
+            };
+
+            _repositoryMock
+                .Setup(r => r.GetAllAsync())
+                .ReturnsAsync(places);
 
             var result = await _service.GetAllPlacesAsync();
 
-            Assert.Single(result);
-            Assert.Equal(place.name, result.First().name);
+            Assert.Equal(2, result.Count());
         }
 
-        // 2. Перевірка отримання місця за ID
         [Fact]
         public async Task GetPlaceByIdAsync_ReturnsPlace()
         {
-            var place = CreateTestPlace();
-            _repository.Places.Add(place);
+            var place = new Place
+            {
+                id = "1",
+                description = "Test place"
+            };
 
-            var result = await _service.GetPlaceByIdAsync(place.id);
+            _repositoryMock
+                .Setup(r => r.GetByIdAsync("1"))
+                .ReturnsAsync(place);
+
+            var result = await _service.GetPlaceByIdAsync("1");
 
             Assert.NotNull(result);
-            Assert.Equal(place.id, result.id);
+            Assert.Equal("Test place", result.description);
         }
 
-        // 3. Перевірка створення місця
+        [Fact]
+        public async Task GetPlaceByIdAsync_ReturnsNullWhenNotFound()
+        {
+            _repositoryMock
+                .Setup(r => r.GetByIdAsync("999"))
+                .ReturnsAsync((Place?)null);
+
+            var result = await _service.GetPlaceByIdAsync("999");
+
+            Assert.Null(result);
+        }
+
         [Fact]
         public async Task CreatePlaceAsync_CreatesPlace()
         {
-            var dto = CreateTestDTO();
+            var dto = new CreatePlaceDTO
+            {
+                name = "New place",
+                description = "Description",
+                imageUrl = "image.jpg"
+            };
+
+            _repositoryMock
+                .Setup(r => r.CreateAsync(It.IsAny<Place>()))
+                .Returns(Task.CompletedTask);
 
             var result = await _service.CreatePlaceAsync(dto);
 
-            Assert.NotNull(result);
-            Assert.Equal(dto.name, result.name);
-            Assert.Equal(dto.description, result.description);
-            Assert.Equal(dto.imageUrl, result.imageUrl);
+            Assert.Equal("New place", result.name);
+            Assert.Equal("Description", result.description);
+
+            _repositoryMock.Verify(
+                r => r.CreateAsync(It.IsAny<Place>()),
+                Times.Once
+            );
         }
 
-        // 4. Перевірка виклику репозиторію при створенні
         [Fact]
-        public async Task CreatePlaceAsync_CallsRepository()
+        public async Task UpdatePlaceAsync_UpdatesExistingPlace()
         {
-            var dto = CreateTestDTO();
-
-            await _service.CreatePlaceAsync(dto);
-
-            Assert.True(_repository.CreateCalled);
-        }
-
-        // 5. Перевірка оновлення місця
-        [Fact]
-        public async Task UpdatePlaceAsync_UpdatesPlace()
-        {
-            var place = CreateTestPlace();
-            _repository.Places.Add(place);
+            var place = new Place
+            {
+                id = "1",
+                description = "Old description",
+                imageUrl = "old.jpg"
+            };
 
             var dto = new UpdatePlaceDTO
             {
-                description = "Нове описання",
-                imageUrl = "new-image.jpg"
+                description = "New description",
+                imageUrl = "new.jpg"
             };
 
-            var result = await _service.UpdatePlaceAsync(place.id, dto);
+            _repositoryMock
+                .Setup(r => r.GetByIdAsync("1"))
+                .ReturnsAsync(place);
 
-            Assert.Equal("Нове описання", result.description);
-            Assert.Equal("new-image.jpg", result.imageUrl);
-            Assert.True(_repository.UpdateCalled);
+            _repositoryMock
+                .Setup(r => r.UpdateAsync(It.IsAny<Place>()))
+                .Returns(Task.CompletedTask);
+
+            var result = await _service.UpdatePlaceAsync("1", dto);
+
+            Assert.Equal("New description", result.description);
+            Assert.Equal("new.jpg", result.imageUrl);
+
+            _repositoryMock.Verify(
+                r => r.UpdateAsync(place),
+                Times.Once
+            );
         }
 
-        // 6. Перевірка оновлення неіснуючого місця
         [Fact]
-        public async Task UpdatePlaceAsync_ReturnsNull_WhenPlaceNotFound()
+        public async Task UpdatePlaceAsync_ReturnsNullWhenPlaceNotFound()
         {
             var dto = new UpdatePlaceDTO
             {
-                description = "Нове описання",
-                imageUrl = "new-image.jpg"
+                description = "Updated"
             };
 
-            var result = await _service.UpdatePlaceAsync("unknown-id", dto);
+            _repositoryMock
+                .Setup(r => r.GetByIdAsync("999"))
+                .ReturnsAsync((Place?)null);
+
+            var result = await _service.UpdatePlaceAsync("999", dto);
 
             Assert.Null(result);
-            Assert.False(_repository.UpdateCalled);
+
+            _repositoryMock.Verify(
+                r => r.UpdateAsync(It.IsAny<Place>()),
+                Times.Never
+            );
         }
 
-        // 7. Перевірка видалення місця
         [Fact]
-        public async Task DeletePlaceAsync_DeletesPlace()
+        public async Task DeletePlaceAsync_DeletesExistingPlace()
         {
-            var place = CreateTestPlace();
-            _repository.Places.Add(place);
+            var place = new Place { id = "1" };
 
-            var result = await _service.DeletePlaceAsync(place.id);
+            _repositoryMock
+                .Setup(r => r.GetByIdAsync("1"))
+                .ReturnsAsync(place);
+
+            _repositoryMock
+                .Setup(r => r.DeleteAsync("1"))
+                .Returns(Task.CompletedTask);
+
+            var result = await _service.DeletePlaceAsync("1");
 
             Assert.True(result);
-            Assert.True(_repository.DeleteCalled);
-            Assert.Empty(_repository.Places);
+
+            _repositoryMock.Verify(
+                r => r.DeleteAsync("1"),
+                Times.Once
+            );
         }
 
-        // 8. Перевірка видалення неіснуючого місця
         [Fact]
-        public async Task DeletePlaceAsync_ReturnsFalse_WhenPlaceNotFound()
+        public async Task DeletePlaceAsync_ReturnsFalseWhenPlaceNotFound()
         {
-            var result = await _service.DeletePlaceAsync("unknown-id");
+            _repositoryMock
+                .Setup(r => r.GetByIdAsync("999"))
+                .ReturnsAsync((Place?)null);
+
+            var result = await _service.DeletePlaceAsync("999");
 
             Assert.False(result);
-            Assert.False(_repository.DeleteCalled);
-        }
 
-        // Тестові дані
-        private static Place CreateTestPlace()
-        {
-            return new Place
-            {
-                id = "test-1",
-                name = "Водоспад Шипіт",
-                category = PlaceCategory.Водоспад,
-                region = PlaceRegion.Західні_Карпати,
-                description = "Гарний водоспад",
-                difficulty = PlaceDifficulty.Легко,
-                latitude = 48.65f,
-                longitude = 23.35f,
-                imageUrl = "shipit.jpg"
-            };
-        }
-
-        private static CreatePlaceDTO CreateTestDTO()
-        {
-            return new CreatePlaceDTO
-            {
-                name = "Водоспад Шипіт",
-                category = PlaceCategory.Водоспад,
-                region = PlaceRegion.Західні_Карпати,
-                description = "Гарний водоспад",
-                difficulty = PlaceDifficulty.Легко,
-                latitude = 48.65f,
-                longitude = 23.35f,
-                imageUrl = "shipit.jpg"
-            };
+            _repositoryMock.Verify(
+                r => r.DeleteAsync(It.IsAny<string>()),
+                Times.Never
+            );
         }
     }
 
-    // Підробний репозиторій замість MongoDB
-    public class FakePlaceRepository : IPlaceRepository
+    // =====================================
+    // PLACES CONTROLLER TESTS
+    // =====================================
+
+    public class PlacesControllerTests
     {
-        public List<Place> Places { get; } = new();
+        private readonly Mock<IPlaceService> _serviceMock;
+        private readonly PlacesController _controller;
 
-        public bool CreateCalled { get; private set; }
-        public bool UpdateCalled { get; private set; }
-        public bool DeleteCalled { get; private set; }
-
-        public Task CreateAsync(Place place)
+        public PlacesControllerTests()
         {
-            CreateCalled = true;
-            Places.Add(place);
-            return Task.CompletedTask;
+            _serviceMock = new Mock<IPlaceService>();
+            _controller = new PlacesController(_serviceMock.Object);
         }
 
-        public Task<List<Place>> GetAllAsync()
+        [Fact]
+        public async Task GetAll_ReturnsOkResult()
         {
-            return Task.FromResult(Places);
+            var places = new List<Place>
+            {
+                new Place
+                {
+                    id = "1",
+                    description = "Test place"
+                }
+            };
+
+            _serviceMock
+                .Setup(s => s.GetAllPlacesAsync())
+                .ReturnsAsync(places);
+
+            var result = await _controller.GetAll();
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returnedPlaces =
+                Assert.IsAssignableFrom<IEnumerable<Place>>(okResult.Value);
+
+            Assert.Single(returnedPlaces);
         }
 
-        public Task<Place?> GetByIdAsync(string id)
+        [Fact]
+        public async Task GetAll_ReturnsEmptyList()
         {
-            var place = Places.FirstOrDefault(p => p.id == id);
-            return Task.FromResult(place);
+            _serviceMock
+                .Setup(s => s.GetAllPlacesAsync())
+                .ReturnsAsync(new List<Place>());
+
+            var result = await _controller.GetAll();
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returnedPlaces =
+                Assert.IsAssignableFrom<IEnumerable<Place>>(okResult.Value);
+
+            Assert.Empty(returnedPlaces);
+        }
+    }
+
+    // =====================================
+    // HEALTH CONTROLLER TESTS
+    // =====================================
+
+    public class HealthControllerTests
+    {
+        private readonly Mock<IMongoDatabase> _databaseMock;
+        private readonly HealthController _controller;
+
+        public HealthControllerTests()
+        {
+            _databaseMock = new Mock<IMongoDatabase>();
+            _controller = new HealthController(_databaseMock.Object);
         }
 
-        public Task UpdateAsync(Place place)
+        [Fact]
+        public async Task GetHealth_ReturnsOkWhenDatabaseWorks()
         {
-            UpdateCalled = true;
-            return Task.CompletedTask;
+            _databaseMock
+                .Setup(d => d.RunCommandAsync<BsonDocument>(
+                    It.IsAny<Command<BsonDocument>>(),
+                    It.IsAny<ReadPreference>(),
+                    It.IsAny<CancellationToken>()
+                ))
+                .ReturnsAsync(new BsonDocument("ok", 1));
+
+            var result = await _controller.GetHealth();
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(okResult.Value);
         }
 
-        public Task DeleteAsync(string id)
+        [Fact]
+        public async Task GetHealth_ReturnsOkWhenDatabaseFails()
         {
-            DeleteCalled = true;
-            Places.RemoveAll(p => p.id == id);
-            return Task.CompletedTask;
+            _databaseMock
+                .Setup(d => d.RunCommandAsync<BsonDocument>(
+                    It.IsAny<Command<BsonDocument>>(),
+                    It.IsAny<ReadPreference>(),
+                    It.IsAny<CancellationToken>()
+                ))
+                .ThrowsAsync(new Exception("Database error"));
+
+            var result = await _controller.GetHealth();
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(okResult.Value);
+        }
+    }
+
+    // =====================================
+    // PLACE REPOSITORY TESTS
+    // =====================================
+
+    public class PlaceRepositoryTests
+    {
+        private readonly Mock<IMongoDatabase> _databaseMock;
+        private readonly Mock<IMongoCollection<PlaceDocument>> _collectionMock;
+        private readonly PlaceRepository _repository;
+
+        public PlaceRepositoryTests()
+        {
+            _databaseMock = new Mock<IMongoDatabase>();
+            _collectionMock = new Mock<IMongoCollection<PlaceDocument>>();
+
+            _databaseMock
+                .Setup(d => d.GetCollection<PlaceDocument>(
+                    "places",
+                    It.IsAny<MongoCollectionSettings>()
+                ))
+                .Returns(_collectionMock.Object);
+
+            _repository = new PlaceRepository(_databaseMock.Object);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_ReturnsPlaces()
+        {
+            var documents = new List<PlaceDocument>
+            {
+                new PlaceDocument
+                {
+                    id = "1",
+                    description = "First place",
+                    imageUrl = "first.jpg"
+                },
+                new PlaceDocument
+                {
+                    id = "2",
+                    description = "Second place",
+                    imageUrl = "second.jpg"
+                }
+            };
+
+            var cursorMock = new Mock<IAsyncCursor<PlaceDocument>>();
+
+            cursorMock
+                .SetupSequence(c => c.MoveNextAsync(
+                    It.IsAny<CancellationToken>()
+                ))
+                .ReturnsAsync(true)
+                .ReturnsAsync(false);
+
+            cursorMock
+                .Setup(c => c.Current)
+                .Returns(documents);
+
+            _collectionMock
+                .Setup(c => c.FindAsync<PlaceDocument>(
+                    It.IsAny<FilterDefinition<PlaceDocument>>(),
+                    It.IsAny<FindOptions<PlaceDocument, PlaceDocument>>(),
+                    It.IsAny<CancellationToken>()
+                ))
+                .ReturnsAsync(cursorMock.Object);
+
+            var result = await _repository.GetAllAsync();
+
+            Assert.Equal(2, result.Count);
+            Assert.Equal("First place", result[0].description);
+            Assert.Equal("Second place", result[1].description);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_ReturnsPlace()
+        {
+            var document = new PlaceDocument
+            {
+                id = "507f1f77bcf86cd799439011",
+                description = "Test place",
+                imageUrl = "image.jpg"
+            };
+
+            var cursorMock = new Mock<IAsyncCursor<PlaceDocument>>();
+
+            cursorMock
+                .SetupSequence(c => c.MoveNextAsync(
+                    It.IsAny<CancellationToken>()
+                ))
+                .ReturnsAsync(true)
+                .ReturnsAsync(false);
+
+            cursorMock
+                .Setup(c => c.Current)
+                .Returns(new List<PlaceDocument> { document });
+
+            _collectionMock
+                .Setup(c => c.FindAsync<PlaceDocument>(
+                    It.IsAny<FilterDefinition<PlaceDocument>>(),
+                    It.IsAny<FindOptions<PlaceDocument, PlaceDocument>>(),
+                    It.IsAny<CancellationToken>()
+                ))
+                .ReturnsAsync(cursorMock.Object);
+
+            var result = await _repository.GetByIdAsync(document.id);
+
+            Assert.NotNull(result);
+            Assert.Equal(document.id, result.id);
+            Assert.Equal(document.description, result.description);
+            Assert.Equal(document.imageUrl, result.imageUrl);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_ReturnsNullWhenNotFound()
+        {
+            var cursorMock = new Mock<IAsyncCursor<PlaceDocument>>();
+
+            cursorMock
+                .SetupSequence(c => c.MoveNextAsync(
+                    It.IsAny<CancellationToken>()
+                ))
+                .ReturnsAsync(false);
+
+            cursorMock
+                .Setup(c => c.Current)
+                .Returns(new List<PlaceDocument>());
+
+            _collectionMock
+                .Setup(c => c.FindAsync<PlaceDocument>(
+                    It.IsAny<FilterDefinition<PlaceDocument>>(),
+                    It.IsAny<FindOptions<PlaceDocument, PlaceDocument>>(),
+                    It.IsAny<CancellationToken>()
+                ))
+                .ReturnsAsync(cursorMock.Object);
+
+            var result = await _repository.GetByIdAsync(
+                "507f1f77bcf86cd799439011"
+            );
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task CreateAsync_InsertsDocument()
+        {
+            var place = new Place
+            {
+                id = "507f1f77bcf86cd799439011",
+                description = "New place",
+                imageUrl = "new.jpg"
+            };
+
+            _collectionMock
+                .Setup(c => c.InsertOneAsync(
+                    It.IsAny<PlaceDocument>(),
+                    It.IsAny<InsertOneOptions>(),
+                    It.IsAny<CancellationToken>()
+                ))
+                .Returns(Task.CompletedTask);
+
+            await _repository.CreateAsync(place);
+
+            _collectionMock.Verify(
+                c => c.InsertOneAsync(
+                    It.IsAny<PlaceDocument>(),
+                    It.IsAny<InsertOneOptions>(),
+                    It.IsAny<CancellationToken>()
+                ),
+                Times.Once
+            );
+        }
+
+        [Fact]
+        public async Task DeleteAsync_DeletesDocument()
+        {
+            _collectionMock
+                .Setup(c => c.DeleteOneAsync(
+                    It.IsAny<FilterDefinition<PlaceDocument>>(),
+                    It.IsAny<CancellationToken>()
+                ))
+                .ReturnsAsync(Mock.Of<DeleteResult>());
+
+            await _repository.DeleteAsync("507f1f77bcf86cd799439011");
+
+            _collectionMock.Verify(
+                c => c.DeleteOneAsync(
+                    It.IsAny<FilterDefinition<PlaceDocument>>(),
+                    It.IsAny<CancellationToken>()
+                ),
+                Times.Once
+            );
         }
     }
 }
