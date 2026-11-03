@@ -64,24 +64,30 @@ namespace Karpaty.Api.DBCommunication.Reposetories
         }
 
 
-        private Place ToModel(PlaceDocument document)
-        {
-            return new Place
-            {
-                id = document.id,
-                description = document.description,
-                imageUrl = document.imageUrl
-            };
-        }
+       private static Place ToModel(PlaceDocument d) => new()
+{
+    id = d.id,
+    name = d.name,
+    category = d.category,
+    region = d.region,
+    description = d.description,
+    difficulty = d.difficulty,
+    latitude = d.latitude,
+    longitude = d.longitude,
+    imageUrl = d.imageUrl
+};
 
-        private PlaceDocument ToDocument(Place place)
-        {
-            return new PlaceDocument
-            {
-                id = place.id,
-                description = place.description,
-                imageUrl = place.imageUrl
-            };
-        }
+private static PlaceDocument ToDocument(Place p) => new()
+{
+    id = p.id,
+    name = p.name,
+    category = p.category,
+    region = p.region,
+    description = p.description,
+    difficulty = p.difficulty,
+    latitude = p.latitude,
+    longitude = p.longitude,
+    imageUrl = p.imageUrl
+};
     }
 }
