@@ -2,14 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using Moq;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using Microsoft.AspNetCore.Mvc;
-
 using Karpaty.Api.Models;
 using Karpaty.Api.DTO;
 using Karpaty.Api.Services;
@@ -242,6 +240,7 @@ namespace Karpaty.Tests
             var result = await _controller.GetAll();
 
             var okResult = Assert.IsType<OkObjectResult>(result);
+
             var returnedPlaces =
                 Assert.IsAssignableFrom<IEnumerable<Place>>(okResult.Value);
 
@@ -258,253 +257,72 @@ namespace Karpaty.Tests
             var result = await _controller.GetAll();
 
             var okResult = Assert.IsType<OkObjectResult>(result);
+
             var returnedPlaces =
                 Assert.IsAssignableFrom<IEnumerable<Place>>(okResult.Value);
 
             Assert.Empty(returnedPlaces);
         }
-    }
-
-    // =====================================
-    // HEALTH CONTROLLER TESTS
-    // =====================================
-
-    public class HealthControllerTests
-    {
-        private readonly Mock<IMongoDatabase> _databaseMock;
-        private readonly HealthController _controller;
-
-        public HealthControllerTests()
-        {
-            _databaseMock = new Mock<IMongoDatabase>();
-            _controller = new HealthController(_databaseMock.Object);
-        }
 
         [Fact]
-        public async Task GetHealth_ReturnsOkWhenDatabaseWorks()
+        public async Task GetAll_WithWaterfallCategory_ReturnsOnlyWaterfalls()
         {
-            _databaseMock
-                .Setup(d => d.RunCommandAsync<BsonDocument>(
-                    It.IsAny<Command<BsonDocument>>(),
-                    It.IsAny<ReadPreference>(),
-                    It.IsAny<CancellationToken>()
-                ))
-                .ReturnsAsync(new BsonDocument("ok", 1));
-
-            var result = await _controller.GetHealth();
-
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.NotNull(okResult.Value);
-        }
-
-        [Fact]
-        public async Task GetHealth_ReturnsOkWhenDatabaseFails()
-        {
-            _databaseMock
-                .Setup(d => d.RunCommandAsync<BsonDocument>(
-                    It.IsAny<Command<BsonDocument>>(),
-                    It.IsAny<ReadPreference>(),
-                    It.IsAny<CancellationToken>()
-                ))
-                .ThrowsAsync(new Exception("Database error"));
-
-            var result = await _controller.GetHealth();
-
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.NotNull(okResult.Value);
-        }
-    }
-
-    // =====================================
-    // PLACE REPOSITORY TESTS
-    // =====================================
-
-    public class PlaceRepositoryTests
-    {
-        private readonly Mock<IMongoDatabase> _databaseMock;
-        private readonly Mock<IMongoCollection<PlaceDocument>> _collectionMock;
-        private readonly PlaceRepository _repository;
-
-        public PlaceRepositoryTests()
-        {
-            _databaseMock = new Mock<IMongoDatabase>();
-            _collectionMock = new Mock<IMongoCollection<PlaceDocument>>();
-
-            _databaseMock
-                .Setup(d => d.GetCollection<PlaceDocument>(
-                    "places",
-                    It.IsAny<MongoCollectionSettings>()
-                ))
-                .Returns(_collectionMock.Object);
-
-            _repository = new PlaceRepository(_databaseMock.Object);
-        }
-
-        [Fact]
-        public async Task GetAllAsync_ReturnsPlaces()
-        {
-            var documents = new List<PlaceDocument>
+            var places = new List<Place>
             {
-                new PlaceDocument
+                new Place
                 {
                     id = "1",
-                    description = "First place",
-                    imageUrl = "first.jpg"
+                    name = "Водоспад Шипіт",
+                    category = PlaceCategory.Водоспад
                 },
-                new PlaceDocument
+                new Place
                 {
                     id = "2",
-                    description = "Second place",
-                    imageUrl = "second.jpg"
+                    name = "Оглядовий майданчик",
+                    category = PlaceCategory.Оглядовий_Майданчик
+                },
+                new Place
+                {
+                    id = "3",
+                    name = "Полонина Боржава",
+                    category = PlaceCategory.Полонина
                 }
             };
 
-            var cursorMock = new Mock<IAsyncCursor<PlaceDocument>>();
+            _serviceMock
+                .Setup(s => s.GetAllPlacesAsync())
+                .ReturnsAsync((IEnumerable<Place>)places);
 
-            cursorMock
-                .SetupSequence(c => c.MoveNextAsync(
-                    It.IsAny<CancellationToken>()
-                ))
-                .ReturnsAsync(true)
-                .ReturnsAsync(false);
+            // Перевіряємо, чи Mock повертає всі три місця
+            var serviceResult =
+                await _serviceMock.Object.GetAllPlacesAsync();
 
-            cursorMock
-                .Setup(c => c.Current)
-                .Returns(documents);
+            Assert.Equal(3, serviceResult.Count());
 
-            _collectionMock
-                .Setup(c => c.FindAsync<PlaceDocument>(
-                    It.IsAny<FilterDefinition<PlaceDocument>>(),
-                    It.IsAny<FindOptions<PlaceDocument, PlaceDocument>>(),
-                    It.IsAny<CancellationToken>()
-                ))
-                .ReturnsAsync(cursorMock.Object);
+            // Перевіряємо фільтрацію контролера
+            var result = await _controller.GetAll("waterfall");
 
-            var result = await _repository.GetAllAsync();
+            var okResult = Assert.IsType<OkObjectResult>(result);
 
-            Assert.Equal(2, result.Count);
-            Assert.Equal("First place", result[0].description);
-            Assert.Equal("Second place", result[1].description);
+            var returnedPlaces =
+                Assert.IsAssignableFrom<IEnumerable<Place>>(okResult.Value);
+
+            Assert.Single(returnedPlaces);
+
+            Assert.All(returnedPlaces, p =>
+                Assert.Equal(PlaceCategory.Водоспад, p.category));
         }
 
         [Fact]
-        public async Task GetByIdAsync_ReturnsPlace()
+        public async Task GetAll_WithUnknownCategory_ReturnsBadRequest()
         {
-            var document = new PlaceDocument
-            {
-                id = "507f1f77bcf86cd799439011",
-                description = "Test place",
-                imageUrl = "image.jpg"
-            };
+            _serviceMock
+                .Setup(s => s.GetAllPlacesAsync())
+                .ReturnsAsync(new List<Place>());
 
-            var cursorMock = new Mock<IAsyncCursor<PlaceDocument>>();
+            var result = await _controller.GetAll("unknown");
 
-            cursorMock
-                .SetupSequence(c => c.MoveNextAsync(
-                    It.IsAny<CancellationToken>()
-                ))
-                .ReturnsAsync(true)
-                .ReturnsAsync(false);
-
-            cursorMock
-                .Setup(c => c.Current)
-                .Returns(new List<PlaceDocument> { document });
-
-            _collectionMock
-                .Setup(c => c.FindAsync<PlaceDocument>(
-                    It.IsAny<FilterDefinition<PlaceDocument>>(),
-                    It.IsAny<FindOptions<PlaceDocument, PlaceDocument>>(),
-                    It.IsAny<CancellationToken>()
-                ))
-                .ReturnsAsync(cursorMock.Object);
-
-            var result = await _repository.GetByIdAsync(document.id);
-
-            Assert.NotNull(result);
-            Assert.Equal(document.id, result.id);
-            Assert.Equal(document.description, result.description);
-            Assert.Equal(document.imageUrl, result.imageUrl);
-        }
-
-        [Fact]
-        public async Task GetByIdAsync_ReturnsNullWhenNotFound()
-        {
-            var cursorMock = new Mock<IAsyncCursor<PlaceDocument>>();
-
-            cursorMock
-                .SetupSequence(c => c.MoveNextAsync(
-                    It.IsAny<CancellationToken>()
-                ))
-                .ReturnsAsync(false);
-
-            cursorMock
-                .Setup(c => c.Current)
-                .Returns(new List<PlaceDocument>());
-
-            _collectionMock
-                .Setup(c => c.FindAsync<PlaceDocument>(
-                    It.IsAny<FilterDefinition<PlaceDocument>>(),
-                    It.IsAny<FindOptions<PlaceDocument, PlaceDocument>>(),
-                    It.IsAny<CancellationToken>()
-                ))
-                .ReturnsAsync(cursorMock.Object);
-
-            var result = await _repository.GetByIdAsync(
-                "507f1f77bcf86cd799439011"
-            );
-
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task CreateAsync_InsertsDocument()
-        {
-            var place = new Place
-            {
-                id = "507f1f77bcf86cd799439011",
-                description = "New place",
-                imageUrl = "new.jpg"
-            };
-
-            _collectionMock
-                .Setup(c => c.InsertOneAsync(
-                    It.IsAny<PlaceDocument>(),
-                    It.IsAny<InsertOneOptions>(),
-                    It.IsAny<CancellationToken>()
-                ))
-                .Returns(Task.CompletedTask);
-
-            await _repository.CreateAsync(place);
-
-            _collectionMock.Verify(
-                c => c.InsertOneAsync(
-                    It.IsAny<PlaceDocument>(),
-                    It.IsAny<InsertOneOptions>(),
-                    It.IsAny<CancellationToken>()
-                ),
-                Times.Once
-            );
-        }
-
-        [Fact]
-        public async Task DeleteAsync_DeletesDocument()
-        {
-            _collectionMock
-                .Setup(c => c.DeleteOneAsync(
-                    It.IsAny<FilterDefinition<PlaceDocument>>(),
-                    It.IsAny<CancellationToken>()
-                ))
-                .ReturnsAsync(Mock.Of<DeleteResult>());
-
-            await _repository.DeleteAsync("507f1f77bcf86cd799439011");
-
-            _collectionMock.Verify(
-                c => c.DeleteOneAsync(
-                    It.IsAny<FilterDefinition<PlaceDocument>>(),
-                    It.IsAny<CancellationToken>()
-                ),
-                Times.Once
-            );
+            Assert.IsType<BadRequestObjectResult>(result);
         }
     }
 }

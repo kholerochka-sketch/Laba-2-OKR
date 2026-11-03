@@ -36,25 +36,33 @@ public class PlacesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] string? category = null)
     {
-        if (!string.IsNullOrWhiteSpace(category))
-        {
-            if (!AllowedCategories.Contains(category))
-            {
-                return BadRequest(new
-                {
-                    status = 400,
-                    error = "Невідома категорія. Дозволені значення: waterfall, viewpoint, meadow"
-                });
-            }
+        var places = await _placeService.GetAllPlacesAsync();
 
-            var places = await _placeService.GetAllPlacesAsync();
-            var filtered = places.Where(p =>
-                string.Equals(p.category.ToString(), category, StringComparison.OrdinalIgnoreCase));
-            return Ok(filtered);
+        if (string.IsNullOrWhiteSpace(category))
+            return Ok(places);
+
+        var categoryMap = new Dictionary<string, PlaceCategory>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["waterfall"] = PlaceCategory.Водоспад,
+            ["viewpoint"] = PlaceCategory.Оглядовий_Майданчик,
+            ["meadow"] = PlaceCategory.Полонина
+        };
+
+        if (!categoryMap.TryGetValue(category, out var selectedCategory))
+        {
+            return BadRequest(new
+            {
+                status = 400,
+                error = "Невідома категорія. Дозволені значення: waterfall, viewpoint, meadow"
+            });
         }
 
-        var allPlaces = await _placeService.GetAllPlacesAsync();
-        return Ok(allPlaces);
+        var filtered = places
+          .Where(p => p.category == selectedCategory)
+          .ToList();
+
+        return Ok(filtered);
     }
 
     /// <summary>
