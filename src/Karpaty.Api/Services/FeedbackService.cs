@@ -43,12 +43,11 @@ namespace Karpaty.Api.Services
             var existing = await _feedbackRepository.GetByIdAsync(id);
             if (existing is null) return null;
 
-            if (dto.Rating != null)
-                existing.Rating = dto.Rating;
+            if (dto.Rating.HasValue)
+                existing.Rating = dto.Rating.Value;
 
             if (!string.IsNullOrWhiteSpace(dto.Message))
-                existing.Message = dto.Message.Trim().ToLowerInvariant();
-
+                existing.Message = dto.Message.Trim();
 
             await _feedbackRepository.UpdateAsync(existing);
             return existing;

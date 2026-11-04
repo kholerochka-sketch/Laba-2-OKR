@@ -1,25 +1,22 @@
+using System.Reflection;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Karpaty.Api.DBCommunication;
+using Karpaty.Api.DBCommunication.Repositories;
 using Karpaty.Api.DBCommunication.Reposetories;
-// Додайте ваші using для сервісів та репозиторіїв, якщо вони в інших папках
 using Karpaty.Api.DBCommunication.Repositories.Interfaces;
 using Karpaty.Api.Seeder;
 using Karpaty.Api.Services;
 using Karpaty.Api.Services.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MongoDB.Driver;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --- 1. Налаштування бази даних MongoDB ---
 builder.Services.Configure<MongoDBSettings>(
     builder.Configuration.GetSection("MongoDBSettings"));
-
-builder.Services.AddScoped<ITipRepository, TipRepository>();
-builder.Services.AddScoped<ITipService, TipService>();
-
-builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(
-        new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
@@ -29,31 +26,86 @@ builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
     return new MongoClient(connectionString);
 });
 
-// Залишаємо ТІЛЬКИ ОДНУ реєстрацію бази даних (Singleton - це правильна практика для MongoDB)
 builder.Services.AddSingleton<IMongoDatabase>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
-    // Беремо назву бази з конфігурації. Якщо її там немає - використовуємо дефолтну "Karpatyyy"
     var dbName = builder.Configuration["MongoDBSettings:DatabaseName"] ?? "Karpatyyy";
     return client.GetDatabase(dbName);
 });
 
-// --- 2. Реєстрація ваших власних сервісів (ОБОВ'ЯЗКОВО!) ---
+// --- 2. Реєстрація репозиторіїв і сервісів ---
 builder.Services.AddScoped<IPlaceRepository, PlaceRepository>();
 builder.Services.AddScoped<IPlaceService, PlaceService>();
-// Якщо додасте DbSeeder, не забудьте його тут також викликати після builder.Build()
+
+builder.Services.AddScoped<ITipRepository, TipRepository>();
+builder.Services.AddScoped<ITipService, TipService>();
+
+builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+
+// --- 3. Контролери, JSON, формат помилок валідації ---
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Конверт енама і текст
+        // enum передається рядками (waterfall, easy ...), а не числами
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
-// --- 3. Налаштування API: Контролери, CORS, Swagger ---
-builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(
-        new System.Text.Json.Serialization.JsonStringEnumConverter()));
-        
-builder.Services.AddScoped<IPlaceService, PlaceService>();
+
+// Невалідні дані -> 400 у форматі контракту { "status": 400, "error": "текст" }
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState.Values
+            .SelectMany(v => v.Errors)
+            .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Некоректні дані запиту" : e.ErrorMessage)
+            .Distinct();
+
+        return new BadRequestObjectResult(new
+        {
+            status = 400,
+            error = string.Join("; ", errors)
+        });
+    };
+});
+
+// --- 4. Обмеження частоти запитів (захист від спаму) ---
+// За замовчуванням 3 запити на хвилину з однієї IP-адреси на POST /api/feedback.
+var feedbackPerMinute = builder.Configuration.GetValue("RateLimiting:FeedbackPerMinute", 3);
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("feedback", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = feedbackPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers["Retry-After"] =
+                ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        }
+
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            status = 429,
+            error = "Забагато запитів. Спробуйте ще раз через хвилину."
+        }, cancellationToken);
+    };
+});
+
+// --- 5. CORS і Swagger ---
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -65,32 +117,38 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Підтягує XML-коментарі (summary, remarks, response) у Swagger UI
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+});
 
 var app = builder.Build();
-// --- 4. Налаштування Middleware (конвеєра запитів) ---
 
+// --- 6. Початкові дані ---
 await DBSeeder.SeedPlacesAsync(app.Services);
 await DBSeeder.SeedTipsAsync(app.Services);
 
-// Підключення Swagger
+// --- 7. Middleware (порядок важливий) ---
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseCors();
+app.UseRateLimiter();
 
-// Налаштування для роздачі статики (фронтенду)
+// Статика (фронтенд)
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapControllers();
 
-// Обробка невідомих маршрутів API (щоб повертався JSON, а не index.html)
+// Невідомі маршрути API -> JSON 404, а не index.html
 app.Map("/api/{**slug}", () => Results.Json(
     new { status = 404, error = "Маршрут API не знайдено" },
     statusCode: StatusCodes.Status404NotFound));
 
-// Якщо маршрут не починається з /api/, віддаємо сторінку фронтенду
+// Усе інше - сторінка фронтенду
 app.MapFallbackToFile("index.html");
 
 app.Run();
