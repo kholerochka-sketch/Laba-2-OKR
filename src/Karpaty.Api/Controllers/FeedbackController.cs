@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Karpaty.Api.Controllers;
 
 /// <summary>
-/// Контролер для відгуків відвідувачів: будь-хто може надіслати відгук,
-/// читати, змінювати й видаляти відгуки може тільки адміністратор (заголовок X-Admin-Key).
+/// Контролер для відгуків відвідувачів: будь-хто може надіслати й переглянути відгуки,
+/// а змінювати й видаляти відгуки може тільки адміністратор (заголовок X-Admin-Key).
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -60,20 +60,12 @@ public class FeedbackController : ControllerBase
     }
 
     /// <summary>
-    /// Отримати всі відгуки (тільки для адміністратора), нові першими.
+    /// Отримати всі відгуки (доступно для всіх відвідувачів), нові першими.
     /// </summary>
-    /// <remarks>
-    /// Потрібен заголовок <c>X-Admin-Key</c> зі значенням з налаштування AdminKey.
-    /// </remarks>
-    /// <param name="adminKey">Адмін-ключ. Сама перевірка виконується фільтром AdminKeyFilter,
-    /// параметр потрібен, щоб поле для ключа з'явилось у Swagger UI.</param>
     /// <response code="200">Список відгуків від найновіших до найстаріших.</response>
-    /// <response code="401">Заголовок X-Admin-Key відсутній або неправильний.</response>
     [HttpGet]
-    [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(typeof(IEnumerable<Feedback>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetAll([FromHeader(Name = AdminKeyFilter.HeaderName)] string? adminKey = null)
+    public async Task<IActionResult> GetAll()
     {
         var feedbacks = await _feedbackService.GetAllFeedbacksAsync();
         return Ok(feedbacks.OrderByDescending(f => f.CreatedAt));
