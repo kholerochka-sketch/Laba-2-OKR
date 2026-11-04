@@ -23,6 +23,33 @@
             <div id="health-status" class="status-box">Завантаження...</div>
         </section>
 
+        <!-- АДМІН-ПАНЕЛЬ (Фіча F5) -->
+        <section class="section" id="admin-section" style="background: #fdfefe; border: 2px dashed #1e5631; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <h2>🔐 Адмін-панель (Керування місцями)</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Введіть адмін-ключ, щоб отримати можливість додавати нові місця.</p>
+
+            <div style="margin-bottom: 15px;">
+                <input type="password" id="admin-key-input" placeholder="Введіть Admin Key (наприклад, SecretAdminKey123)" style="padding: 8px; width: 300px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+
+            <!-- Форма додавання нового місця -->
+            <h3 style="font-size: 16px; margin-bottom: 10px;">Додати нове місце</h3>
+            <form id="add-place-form" style="display: flex; flex-direction: column; gap: 10px; max-width: 600px;">
+                <input type="text" id="place-name" placeholder="Назва місця" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <select id="place-category" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="" disabled selected>Оберіть категорію</option>
+                    <option value="waterfall">Водоспад (waterfall)</option>
+                    <option value="viewpoint">Оглядовий майданчик (viewpoint)</option>
+                    <option value="meadow">Полонина (meadow)</option>
+                </select>
+                <textarea id="place-desc" placeholder="Опис місця..." rows="3" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                <input type="url" id="place-map" placeholder="Посилання на карту (необов'язково)" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <button type="submit" style="padding: 10px; background-color: #b8860b; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: fit-content;">
+                    Додати місце в базу ➕
+                </button>
+            </form>
+        </section>
+
         <!-- Секція Цікаві місця (F1 + F2) -->
         <section class="section" id="places-section">
             <h2>Цікаві місця</h2>
@@ -62,7 +89,7 @@
             <div class="modal-content">
                 <span class="close-btn">&times;</span>
                 <div id="modalDetails">
-                    <!-- Сюди завантажується опис і назва місця (h2) -->
+                    <!-- Контент підвантажується динамічно через JS -->
                 </div>
 
                 <!-- Блок написання відгуку конкретно для цього місця -->
