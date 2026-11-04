@@ -50,7 +50,7 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             return documents.Select(ToModel).ToList();
         }
 
-        
+
 
         public async Task UpdateAsync(Place place)
         {
@@ -95,5 +95,6 @@ namespace Karpaty.Api.DBCommunication.Reposetories
                 imageUrl = place.imageUrl
             };
         }
+
     }
 }
