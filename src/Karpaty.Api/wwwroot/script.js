@@ -1,5 +1,5 @@
 const API_URL = "/api";
-const API_BASE_URL = API_URL; // Щоб уникнути помилок у старих функціях
+const API_BASE_URL = API_URL;
 
 document.addEventListener('DOMContentLoaded', () => {
     checkHealth();
@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFilters();
     setupModal();
     setupReviewForm();
+    loadAllReviews();
 });
 
 // Перевірка стану системи (F0)
@@ -30,7 +31,7 @@ async function checkHealth() {
     }
 }
 
-// Завантаження списку місць з урахуванням фільтрів (F1 + F2)
+// Завантаження списку місць (F1 + F2)
 async function loadPlaces(category = '') {
     const placesList = document.getElementById('places-list');
     if (!placesList) return;
@@ -64,7 +65,7 @@ async function loadPlaces(category = '') {
     }
 }
 
-// Завантаження порад для походу (F3)
+// Завантаження порад (F3)
 async function loadTips() {
     const tipsList = document.getElementById('tips-list');
     if (!tipsList) return;
@@ -75,7 +76,7 @@ async function loadTips() {
         tipsList.innerHTML = tips.map(t => `
             <div class="card">
                 <h3>${t.title}</h3>
-                <p>${t.content}</p>
+                <p>${t.content || t.text}</p>
             </div>
         `).join('');
     } catch (error) {
@@ -83,7 +84,7 @@ async function loadTips() {
     }
 }
 
-// Налаштування кнопок фільтрації (F2)
+// Фільтри (F2)
 function setupFilters() {
     const buttons = document.querySelectorAll('.filter-btn');
     buttons.forEach(btn => {
@@ -96,7 +97,7 @@ function setupFilters() {
     });
 }
 
-// Управління модальним вікном
+// Модальне вікно
 function setupModal() {
     const modal = document.getElementById('placeModal');
     const closeBtn = document.querySelector('.close-btn');
@@ -115,58 +116,61 @@ function setupModal() {
     });
 }
 
-// Відкриття модального вікна з деталями місця та завантаженням відгуків (F2 + F4)
+// Відкриття модалки конкретного місця
 window.openModal = function (place) {
     const modal = document.getElementById('placeModal');
     const modalDetails = document.getElementById('modalDetails');
     if (!modal || !modalDetails) return;
 
-    window.currentPlaceId = place.id || place._id;
+    // Зберігаємо назву місця глобально для форми відгуку
+    window.currentPlaceName = place.name;
 
     modalDetails.innerHTML = `
-        <h2>${place.name}</h2>
+        <h2 id="modal-place-title">${place.name}</h2>
         <p><strong>Категорія:</strong> ${place.category}</p>
         <p>${place.description}</p>
         ${place.mapUrl ? `<p><a href="${place.mapUrl}" target="_blank">Відкрити на карті 🗺️</a></p>` : ''}
     `;
 
     modal.style.display = 'block';
-
-    // Завантажуємо відгуки для цього місця (Фіча F4)
-    loadReviews(window.currentPlaceId);
 };
 
-// Завантаження відгуків для конкретного місця (Фіча F4)
-async function loadReviews(placeId) {
+// Завантаження всіх відгуків у кінці сторінки
+async function loadAllReviews() {
     const container = document.getElementById('reviews-container');
     if (!container) return;
 
     container.innerHTML = '<p style="color: #666;">Завантаження відгуків...</p>';
     try {
-        const response = await fetch(`/api/places/${placeId}/reviews`);
+        const response = await fetch('/api/feedback');
         if (!response.ok) throw new Error('Помилка завантаження відгуків');
 
         const reviews = await response.json();
 
         if (reviews.length === 0) {
-            container.innerHTML = '<p style="color: #666;">Ще немає відгуків. Будьте першим!</p>';
+            container.innerHTML = '<p style="color: #666;">Ще немає відгуків. Оберіть місце на карті та залиште перший!</p>';
             return;
         }
 
-        container.innerHTML = reviews.map(r => `
-            <div style="background: #f9f9f9; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
-                <strong>${r.userName}</strong> — <span style="color: #f39c12;">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
-                <p style="margin: 5px 0 0 0; color: #333;">${r.comment}</p>
+        container.innerHTML = reviews.map(r => {
+            return `
+            <div style="background: #f9f9f9; padding: 14px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #e0e0e0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <strong>${r.name}</strong>
+                    <span style="color: #f39c12; font-size: 14px;">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+                </div>
+                <p style="margin: 6px 0; color: #333; font-size: 15px;">${r.message}</p>
                 <small style="color: #999; font-size: 11px;">${new Date(r.createdAt).toLocaleDateString()}</small>
             </div>
-        `).join('');
+        `;
+        }).join('');
     } catch (error) {
         console.error(error);
         container.innerHTML = '<p style="color: red;">Не вдалося завантажити відгуки.</p>';
     }
 }
 
-// Відправка нового відгуку на бекенд (Фіча F4)
+// Відправка відгуку з модального вікна конкретного місця
 function setupReviewForm() {
     const form = document.getElementById('review-form');
     if (!form) return;
@@ -174,17 +178,21 @@ function setupReviewForm() {
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
-        const placeId = window.currentPlaceId;
-        if (!placeId) return;
+        const placeName = window.currentPlaceName || "Загальне місце";
+        const userMessage = document.getElementById('review-text').value;
+
+        // Вшиваємо назву місця прямо в текст повідомлення, щоб вона гарантовано відображалась
+        const formattedMessage = `📍 [Місце: ${placeName}] — ${userMessage}`;
 
         const newReview = {
-            userName: document.getElementById('reviewer-name').value,
+            name: document.getElementById('reviewer-name').value,
+            email: document.getElementById('reviewer-email').value,
             rating: parseInt(document.getElementById('review-rating').value),
-            comment: document.getElementById('review-text').value
+            message: formattedMessage
         };
 
         try {
-            const response = await fetch(`/api/places/${placeId}/reviews`, {
+            const response = await fetch('/api/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newReview)
@@ -192,12 +200,19 @@ function setupReviewForm() {
 
             if (response.ok) {
                 form.reset();
-                loadReviews(placeId); // Оновлюємо список відгуків на екрані
+                const modal = document.getElementById('placeModal');
+                if (modal) modal.style.display = 'none'; // Закриваємо модалку
+                loadAllReviews(); // Оновлюємо список відгуків у кінці сайту
+                alert('Дякуємо! Ваш відгук успішно додано.');
+            } else if (response.status === 429) {
+                alert('Забагато запитів! Будь ласка, зачекайте хвилину перед наступним відгуком.');
             } else {
-                alert('Помилка при відправці відгуку.');
+                const errData = await response.json().catch(() => ({}));
+                alert('Помилка при відправці відгуку: ' + (errData.error || 'невірні дані'));
             }
         } catch (error) {
             console.error('Помилка мережі:', error);
+            alert('Сталася помилка мережі при надсиланні відгуку.');
         }
     });
 }

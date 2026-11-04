@@ -49,27 +49,28 @@
             </div>
         </section>
 
-        <!-- Модальне вікно деталей місця (F2 + F4) -->
+        <!-- СЕКЦІЯ ВСІХ ВІДГУКІВ У КІНЦІ САЙТУ (Фіча F4) -->
+        <section class="section" id="reviews-section">
+            <h2>Відгуки відвідувачів</h2>
+            <div id="reviews-container">
+                <p style="color: #666;">Завантаження відгуків...</p>
+            </div>
+        </section>
+
+        <!-- Модальне вікно деталей місця (F2 + Форма відгуку) -->
         <div id="placeModal" class="modal" style="display: none;">
             <div class="modal-content">
                 <span class="close-btn">&times;</span>
                 <div id="modalDetails">
-                    <!-- Контент підвантажується динамічно через JS -->
+                    <!-- Сюди завантажується опис і назва місця (h2) -->
                 </div>
 
-                <!-- Блок системи відгуків (Фіча F4) усередині модалки -->
+                <!-- Блок написання відгуку конкретно для цього місця -->
                 <div class="reviews-section" style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
-                    <h3>Відгуки відвідувачів</h3>
-
-                    <!-- Контейнер для списку відгуків -->
-                    <div id="reviews-container" style="margin-bottom: 20px;">
-                        <p style="color: #666;">Завантаження відгуків...</p>
-                    </div>
-
-                    <!-- Форма для нового відгуку -->
-                    <h4>Залишити свій відгук</h4>
+                    <h3 style="margin-bottom: 12px; color: #1e5631;">Залишити відгук про це місце</h3>
                     <form id="review-form" style="display: flex; flex-direction: column; gap: 10px;">
                         <input type="text" id="reviewer-name" placeholder="Ваше ім'я" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <input type="email" id="reviewer-email" placeholder="Ваш Email" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
 
                         <select id="review-rating" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                             <option value="" disabled selected>Оберіть оцінку (від 1 до 5)</option>
@@ -80,7 +81,7 @@
                             <option value="1">⭐ (1 - Жахливо)</option>
                         </select>
 
-                        <textarea id="review-text" placeholder="Ваш коментар про це місце..." rows="3" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
+                        <textarea id="review-text" placeholder="Ваш коментар..." rows="3" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
 
                         <button type="submit" style="padding: 10px; background-color: #1e5631; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                             Надіслати відгук
