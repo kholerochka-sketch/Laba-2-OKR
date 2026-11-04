@@ -4,7 +4,7 @@ const API_BASE_URL = API_URL; // Щоб уникнути помилок у ст�
 document.addEventListener("DOMContentLoaded", () => {
     checkHealth();
     loadPlaces();
-    loadTips(); 
+    loadTips();
     setupFilterButtons();
     setupModalEvents();
 });
@@ -107,6 +107,8 @@ async function loadTips() {
                 <p>${tip.text}</p>
             </div>
         `).join("");
+
+
 
     } catch (error) {
         tipsListEl.innerHTML = `
