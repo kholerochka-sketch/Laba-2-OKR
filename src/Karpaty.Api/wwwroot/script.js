@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFilters();
     setupModal();
     setupReviewForm();
+    setupAdminPanel(); // Ініціалізація адмін-панелі (Фіча F5)
     loadAllReviews();
 });
 
@@ -31,7 +32,7 @@ async function checkHealth() {
     }
 }
 
-// Завантаження списку місць (F1 + F2)
+// Завантаження списку місць (F1 + F2) з кнопкою видалення для адміна (F5)
 async function loadPlaces(category = '') {
     const placesList = document.getElementById('places-list');
     if (!placesList) return;
@@ -51,14 +52,20 @@ async function loadPlaces(category = '') {
             return;
         }
 
-        placesList.innerHTML = places.map(p => `
-            <div class="card">
+        const adminKey = document.getElementById('admin-key-input')?.value || '';
+
+        placesList.innerHTML = places.map(p => {
+            const placeId = p.id || p._id;
+            return `
+            <div class="card" style="position: relative;">
                 <h3>${p.name}</h3>
                 <p><strong>Категорія:</strong> ${p.category}</p>
                 <p>${p.description ? p.description.substring(0, 100) + '...' : ''}</p>
                 <button class="details-btn" onclick='openModal(${JSON.stringify(p)})'>Детальніше</button>
+                ${adminKey ? `<button onclick="deletePlace('${placeId}')" style="margin-top: 10px; background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; display: block;">Видалити місце 🗑️</button>` : ''}
             </div>
-        `).join('');
+        `;
+        }).join('');
     } catch (error) {
         console.error(error);
         placesList.innerHTML = '<p style="color: red;">Не вдалося завантажити місця.</p>';
@@ -116,17 +123,15 @@ function setupModal() {
     });
 }
 
-// Відкриття модалки конкретного місця
 window.openModal = function (place) {
     const modal = document.getElementById('placeModal');
     const modalDetails = document.getElementById('modalDetails');
     if (!modal || !modalDetails) return;
 
-    // Зберігаємо назву місця глобально для форми відгуку
     window.currentPlaceName = place.name;
 
     modalDetails.innerHTML = `
-        <h2 id="modal-place-title">${place.name}</h2>
+        <h2>${place.name}</h2>
         <p><strong>Категорія:</strong> ${place.category}</p>
         <p>${place.description}</p>
         ${place.mapUrl ? `<p><a href="${place.mapUrl}" target="_blank">Відкрити на карті 🗺️</a></p>` : ''}
@@ -135,7 +140,7 @@ window.openModal = function (place) {
     modal.style.display = 'block';
 };
 
-// Завантаження всіх відгуків у кінці сторінки
+// Завантаження всіх відгуків (F4)
 async function loadAllReviews() {
     const container = document.getElementById('reviews-container');
     if (!container) return;
@@ -152,8 +157,7 @@ async function loadAllReviews() {
             return;
         }
 
-        container.innerHTML = reviews.map(r => {
-            return `
+        container.innerHTML = reviews.map(r => `
             <div style="background: #f9f9f9; padding: 14px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #e0e0e0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <strong>${r.name}</strong>
@@ -162,15 +166,14 @@ async function loadAllReviews() {
                 <p style="margin: 6px 0; color: #333; font-size: 15px;">${r.message}</p>
                 <small style="color: #999; font-size: 11px;">${new Date(r.createdAt).toLocaleDateString()}</small>
             </div>
-        `;
-        }).join('');
+        `).join('');
     } catch (error) {
         console.error(error);
         container.innerHTML = '<p style="color: red;">Не вдалося завантажити відгуки.</p>';
     }
 }
 
-// Відправка відгуку з модального вікна конкретного місця
+// Відправка відгуку (F4)
 function setupReviewForm() {
     const form = document.getElementById('review-form');
     if (!form) return;
@@ -180,8 +183,6 @@ function setupReviewForm() {
 
         const placeName = window.currentPlaceName || "Загальне місце";
         const userMessage = document.getElementById('review-text').value;
-
-        // Вшиваємо назву місця прямо в текст повідомлення, щоб вона гарантовано відображалась
         const formattedMessage = `📍 [Місце: ${placeName}] — ${userMessage}`;
 
         const newReview = {
@@ -201,18 +202,102 @@ function setupReviewForm() {
             if (response.ok) {
                 form.reset();
                 const modal = document.getElementById('placeModal');
-                if (modal) modal.style.display = 'none'; // Закриваємо модалку
-                loadAllReviews(); // Оновлюємо список відгуків у кінці сайту
+                if (modal) modal.style.display = 'none';
+                loadAllReviews();
                 alert('Дякуємо! Ваш відгук успішно додано.');
-            } else if (response.status === 429) {
-                alert('Забагато запитів! Будь ласка, зачекайте хвилину перед наступним відгуком.');
             } else {
-                const errData = await response.json().catch(() => ({}));
-                alert('Помилка при відправці відгуку: ' + (errData.error || 'невірні дані'));
+                alert('Помилка при відправці відгуку.');
             }
         } catch (error) {
-            console.error('Помилка мережі:', error);
-            alert('Сталася помилка мережі при надсиланні відгуку.');
+            console.error(error);
+            alert('Помилка мережі.');
         }
     });
 }
+
+// АДМІН-ПАНЕЛЬ: Додавання та видалення місць (Фіча F5)
+function setupAdminPanel() {
+    const form = document.getElementById('add-place-form');
+    const adminKeyInput = document.getElementById('admin-key-input');
+
+    if (adminKeyInput) {
+        adminKeyInput.addEventListener('input', () => {
+            loadPlaces(); // Перезавантажуємо список місць, щоб з'явилися кнопки видалення, якщо ключ введено вірно
+        });
+    }
+
+    if (!form) return;
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const adminKey = adminKeyInput ? adminKeyInput.value.trim() : '';
+        if (!adminKey) {
+            alert('Будь ласка, введіть адмін-ключ вище!');
+            return;
+        }
+
+        const newPlace = {
+            name: document.getElementById('place-name').value,
+            category: document.getElementById('place-category').value,
+            description: document.getElementById('place-desc').value,
+            mapUrl: document.getElementById('place-map').value || null
+        };
+
+        try {
+            const response = await fetch('/api/places', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Admin-Key': adminKey
+                },
+                body: JSON.stringify(newPlace)
+            });
+
+            if (response.ok) {
+                form.reset();
+                loadPlaces();
+                alert('Місце успішно додано через адмін-панель! 🎉');
+            } else if (response.status === 401) {
+                alert('Неправильний адмін-ключ (X-Admin-Key)!');
+            } else {
+                alert('Помилка при додаванні місця.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Помилка мережі.');
+        }
+    });
+}
+
+// Функція видалення місця для адміна (F5)
+window.deletePlace = async function (id) {
+    const adminKey = document.getElementById('admin-key-input')?.value.trim() || '';
+    if (!adminKey) {
+        alert('Введіть адмін-ключ у полі зверху!');
+        return;
+    }
+
+    if (!confirm('Ви впевнені, що хочете видалити це місце?')) return;
+
+    try {
+        const response = await fetch(`/api/places/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-Admin-Key': adminKey
+            }
+        });
+
+        if (response.ok) {
+            loadPlaces();
+            alert('Місце успішно видалено!');
+        } else if (response.status === 401) {
+            alert('Неправильний адмін-ключ!');
+        } else {
+            alert('Не вдалося видалити місце.');
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Помилка мережі.');
+    }
+};
