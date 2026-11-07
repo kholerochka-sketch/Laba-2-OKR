@@ -1,4 +1,4 @@
-﻿using Karpaty.Api.DBCommunication.Repositories.Interfaces;
+using Karpaty.Api.DBCommunication.Repositories.Interfaces;
 using Karpaty.Api.DTO;
 using Karpaty.Api.Models;
 using Karpaty.Api.Services.Interfaces;
