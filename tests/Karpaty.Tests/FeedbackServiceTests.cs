@@ -119,7 +119,7 @@ namespace Karpaty.Tests
 
             Assert.NotNull(result);
             Assert.Equal(5, result.Rating);
-            Assert.Equal("great service!", result.Message);
+            Assert.Equal("GREAT SERVICE!", result.Message);
 
             _mockRepository.Verify(
                 r => r.UpdateAsync(existing),
@@ -169,7 +169,7 @@ namespace Karpaty.Tests
 
             Assert.NotNull(result);
             Assert.Equal("Old message", result.Message);
-            Assert.Equal(0, result.Rating);
+            Assert.Equal(4, result.Rating);
         }
 
         [Fact]

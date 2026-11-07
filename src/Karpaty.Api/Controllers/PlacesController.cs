@@ -39,17 +39,11 @@ public class PlacesController : ControllerBase
         var places = await _placeService.GetAllPlacesAsync();
 
         if (string.IsNullOrWhiteSpace(category))
+        {
             return Ok(places);
+        }
 
-        var categoryMap = new Dictionary<string, PlaceCategory>(
-    StringComparer.OrdinalIgnoreCase)
-{
-    ["waterfall"] = PlaceCategory.waterfall,
-    ["viewpoint"] = PlaceCategory.viewpoint,
-    ["meadow"] = PlaceCategory.meadow
-};
-
-        if (!categoryMap.TryGetValue(category, out var selectedCategory))
+        if (!AllowedCategories.Contains(category))
         {
             return BadRequest(new
             {
@@ -58,9 +52,11 @@ public class PlacesController : ControllerBase
             });
         }
 
-        var filtered = places
-          .Where(p => p.category == selectedCategory)
-          .ToList();
+        var filtered = places.Where(p =>
+            string.Equals(
+                p.category.ToString(),
+                category,
+                StringComparison.OrdinalIgnoreCase));
 
         return Ok(filtered);
     }

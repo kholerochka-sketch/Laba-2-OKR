@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Карпати без натовпу</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Іконки FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -17,17 +16,19 @@
     </header>
 
     <main class="container">
-        <!-- Секція "Здоров'я API" (F0) -->
+
+        <!-- Стан API -->
         <section class="section" id="health-section">
             <h2>Стан системи</h2>
-            <div id="health-status" class="status-box">Завантаження...</div>
+            <div id="health-status" class="status-box">
+                Завантаження...
+            </div>
         </section>
 
-        <!-- Секція Цікаві місця (F1 + F2) -->
+        <!-- Цікаві місця -->
         <section class="section" id="places-section">
             <h2>Цікаві місця</h2>
 
-            <!-- Панель фільтрів (F2) -->
             <div class="filters-container">
                 <button class="filter-btn active" data-category="">Усі місця</button>
                 <button class="filter-btn" data-category="waterfall">Водоспади</button>
@@ -35,67 +36,100 @@
                 <button class="filter-btn" data-category="meadow">Полонини</button>
             </div>
 
-            <!-- Сітка карток місць -->
             <div id="places-list" class="cards-grid">
                 <p class="placeholder">Дані завантажуються...</p>
             </div>
         </section>
 
-        <!-- СЕКЦІЯ ПОРАД ДЛЯ ПОХОДУ (Фіча F3) -->
+        <!-- Поради для походу -->
         <section class="section" id="tips-section">
             <h2>Поради для походу</h2>
+
             <div id="tips-list" class="cards-grid">
                 <p class="placeholder">Завантаження порад...</p>
             </div>
         </section>
 
-        <!-- Модальне вікно деталей місця (F2 + F4) -->
-        <div id="placeModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close-btn">&times;</span>
-                <div id="modalDetails">
-                    <!-- Контент підвантажується динамічно через JS -->
-                </div>
+        <!-- Загальні відгуки -->
+        <section class="section" id="reviews-section">
+            <h2>Відгуки мандрівників</h2>
 
-                <!-- Блок системи відгуків (Фіча F4) усередині модалки -->
-                <div class="reviews-section" style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 15px;">
-                    <h3>Відгуки відвідувачів</h3>
-
-                    <!-- Контейнер для списку відгуків -->
-                    <div id="reviews-container" style="margin-bottom: 20px;">
-                        <p style="color: #666;">Завантаження відгуків...</p>
-                    </div>
-
-                    <!-- Форма для нового відгуку -->
-                    <h4>Залишити свій відгук</h4>
-                    <form id="review-form" style="display: flex; flex-direction: column; gap: 10px;">
-                        <input type="text" id="reviewer-name" placeholder="Ваше ім'я" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-
-                        <select id="review-rating" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                            <option value="" disabled selected>Оберіть оцінку (від 1 до 5)</option>
-                            <option value="5">⭐⭐⭐⭐⭐ (5 - Чудово)</option>
-                            <option value="4">⭐⭐⭐⭐ (4 - Добре)</option>
-                            <option value="3">⭐⭐⭐ (3 - Нормально)</option>
-                            <option value="2">⭐⭐ (2 - Погано)</option>
-                            <option value="1">⭐ (1 - Жахливо)</option>
-                        </select>
-
-                        <textarea id="review-text" placeholder="Ваш коментар про це місце..." rows="3" required style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
-
-                        <button type="submit" style="padding: 10px; background-color: #1e5631; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                            Надіслати відгук
-                        </button>
-                    </form>
-                </div>
+            <div id="reviews-container" class="cards-grid">
+                <p class="placeholder">Завантаження відгуків...</p>
             </div>
-        </div>
+        </section>
+
     </main>
 
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 Karpaty Guide — Командний проєкт</p>
+    <!-- Модальне вікно місця -->
+    <div id="place-modal" class="modal">
+        <div class="modal-content">
+
+            <button type="button" class="close-modal" id="close-modal">
+                &times;
+            </button>
+
+            <div id="modalDetails">
+                <!-- Деталі місця завантажуються через JavaScript -->
+            </div>
+
+            <!-- Форма відгуку -->
+            <section class="review-form-section">
+                <h3>Залишити відгук</h3>
+
+                <form id="review-form">
+
+                    <div class="form-group">
+                        <label for="reviewer-name">Ваше ім'я</label>
+                        <input
+                            type="text"
+                            id="reviewer-name"
+                            name="name"
+                            required
+                            maxlength="100"
+                            placeholder="Введіть ваше ім'я">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reviewer-email">Електронна пошта</label>
+                        <input
+                            type="email"
+                            id="reviewer-email"
+                            name="email"
+                            required
+                            placeholder="example@gmail.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="review-rating">Оцінка</label>
+                        <select id="review-rating" name="rating" required>
+                            <option value="5">5 — Відмінно</option>
+                            <option value="4">4 — Добре</option>
+                            <option value="3">3 — Нормально</option>
+                            <option value="2">2 — Погано</option>
+                            <option value="1">1 — Дуже погано</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="review-text">Ваш відгук</label>
+                        <textarea
+                            id="review-text"
+                            name="message"
+                            required
+                            maxlength="2000"
+                            placeholder="Поділіться своїми враженнями..."></textarea>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        Надіслати відгук
+                    </button>
+
+                </form>
+            </section>
+
         </div>
-    </footer>
+    </div>
 
     <script src="script.js"></script>
 </body>
