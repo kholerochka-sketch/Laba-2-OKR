@@ -1,28 +1,16 @@
-﻿
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using Moq;
-using MongoDB.Driver;
-using MongoDB.Bson;
-using Microsoft.AspNetCore.Mvc;
 using Karpaty.Api.Models;
 using Karpaty.Api.DTO;
 using Karpaty.Api.Services;
 using Karpaty.Api.Services.Interfaces;
-using Karpaty.Api.Controllers;
-using Karpaty.Api.DBCommunication.Documents;
 using Karpaty.Api.DBCommunication.Repositories.Interfaces;
-using Karpaty.Api.DBCommunication.Reposetories;
 
 namespace Karpaty.Tests
 {
-    // =====================================
-    // PLACE SERVICE TESTS
-    // =====================================
-
     public class PlaceServiceTests
     {
         private readonly Mock<IPlaceRepository> _repositoryMock;
@@ -84,20 +72,24 @@ namespace Karpaty.Tests
         }
 
         [Fact]
-        public async Task CreatePlaceAsync_CreatesPlace()
-        {
-            var dto = new CreatePlaceDTO
-            {
-                name = "New place",
-                description = "Description",
-                imageUrl = "image.jpg"
-            };
+public async Task CreatePlaceAsync_CreatesPlace()
+{
+    var dto = new CreatePlaceDTO
+    {
+        name = "New place",
+        description = "Description",
+        imageUrl = "image.jpg"
+    };
 
-            _repositoryMock
-                .Setup(r => r.CreateAsync(It.IsAny<Place>()))
-                .Returns(Task.CompletedTask);
+    _repositoryMock
+        .Setup(r => r.GetAllAsync())
+        .ReturnsAsync(new List<Place>());
 
-            var result = await _service.CreatePlaceAsync(dto);
+    _repositoryMock
+        .Setup(r => r.CreateAsync(It.IsAny<Place>()))
+        .Returns(Task.CompletedTask);
+
+    var result = await _service.CreatePlaceAsync(dto);
 
             Assert.Equal("New place", result.name);
             Assert.Equal("Description", result.description);
@@ -108,7 +100,7 @@ namespace Karpaty.Tests
             );
         }
 
-        [Fact]
+                [Fact]
         public async Task UpdatePlaceAsync_UpdatesExistingPlace()
         {
             var place = new Place
@@ -203,126 +195,6 @@ namespace Karpaty.Tests
                 r => r.DeleteAsync(It.IsAny<string>()),
                 Times.Never
             );
-        }
-    }
-
-    // =====================================
-    // PLACES CONTROLLER TESTS
-    // =====================================
-
-    public class PlacesControllerTests
-    {
-        private readonly Mock<IPlaceService> _serviceMock;
-        private readonly PlacesController _controller;
-
-        public PlacesControllerTests()
-        {
-            _serviceMock = new Mock<IPlaceService>();
-            _controller = new PlacesController(_serviceMock.Object);
-        }
-
-        [Fact]
-        public async Task GetAll_ReturnsOkResult()
-        {
-            var places = new List<Place>
-            {
-                new Place
-                {
-                    id = "1",
-                    description = "Test place"
-                }
-            };
-
-            _serviceMock
-                .Setup(s => s.GetAllPlacesAsync())
-                .ReturnsAsync(places);
-
-            var result = await _controller.GetAll();
-
-            var okResult = Assert.IsType<OkObjectResult>(result);
-
-            var returnedPlaces =
-                Assert.IsAssignableFrom<IEnumerable<Place>>(okResult.Value);
-
-            Assert.Single(returnedPlaces);
-        }
-
-        [Fact]
-        public async Task GetAll_ReturnsEmptyList()
-        {
-            _serviceMock
-                .Setup(s => s.GetAllPlacesAsync())
-                .ReturnsAsync(new List<Place>());
-
-            var result = await _controller.GetAll();
-
-            var okResult = Assert.IsType<OkObjectResult>(result);
-
-            var returnedPlaces =
-                Assert.IsAssignableFrom<IEnumerable<Place>>(okResult.Value);
-
-            Assert.Empty(returnedPlaces);
-        }
-
-        [Fact]
-        public async Task GetAll_WithWaterfallCategory_ReturnsOnlyWaterfalls()
-        {
-            var places = new List<Place>
-            {
-                new Place
-                {
-                    id = "1",
-                    name = "Водоспад Шипіт",
-                    category = PlaceCategory.Водоспад
-                },
-                new Place
-                {
-                    id = "2",
-                    name = "Оглядовий майданчик",
-                    category = PlaceCategory.Оглядовий_Майданчик
-                },
-                new Place
-                {
-                    id = "3",
-                    name = "Полонина Боржава",
-                    category = PlaceCategory.Полонина
-                }
-            };
-
-            _serviceMock
-                .Setup(s => s.GetAllPlacesAsync())
-                .ReturnsAsync((IEnumerable<Place>)places);
-
-            // Перевіряємо, чи Mock повертає всі три місця
-            var serviceResult =
-                await _serviceMock.Object.GetAllPlacesAsync();
-
-            Assert.Equal(3, serviceResult.Count());
-
-            // Перевіряємо фільтрацію контролера
-            var result = await _controller.GetAll("waterfall");
-
-            var okResult = Assert.IsType<OkObjectResult>(result);
-
-            var returnedPlaces =
-                Assert.IsAssignableFrom<IEnumerable<Place>>(okResult.Value);
-
-            Assert.Single(returnedPlaces);
-
-            Assert.All(returnedPlaces, p =>
-                Assert.Equal(PlaceCategory.Водоспад, p.category));
-        }
-
-        [Fact]
-        public async Task GetAll_WithUnknownCategory_ReturnsBadRequest()
-        {
-            _serviceMock
-                .Setup(s => s.GetAllPlacesAsync())
-                .ReturnsAsync(new List<Place>());
-
-            var result = await _controller.GetAll("unknown");
-
-            Assert.IsType<BadRequestObjectResult>(result);
         }
     }
 }

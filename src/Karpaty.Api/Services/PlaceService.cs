@@ -43,9 +43,16 @@ namespace Karpaty.Api.Services
             return await _placeRepository.GetByCategoryAsync(parsedCategory);
         }
 
-        public async Task<Place> CreatePlaceAsync(CreatePlaceDTO dto)
+        public async Task<Models.Place> CreatePlaceAsync(CreatePlaceDTO dto)
         {
-            var newPlace = new Place
+            var allPlaces = await _placeRepository.GetAllAsync();
+
+            if (allPlaces.Any(p => string.Equals(p.name, dto.name, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException($"Місце з назвою '{dto.name}' вже існує.");
+            }
+
+            var newPlace = new Models.Place
             {
                 name = dto.name,
                 category = dto.category,
@@ -58,7 +65,6 @@ namespace Karpaty.Api.Services
             };
 
             await _placeRepository.CreateAsync(newPlace);
-
             return newPlace;
         }
 
