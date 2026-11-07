@@ -5,7 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   <GenerateDocumentationFile>true</GenerateDocumentationFile>
-     </PropertyGroup>
+       <UserSecretsId>9089c19c-3f8a-4c85-a227-8126ab772207</UserSecretsId>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
