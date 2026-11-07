@@ -41,11 +41,16 @@ namespace Karpaty.Api.Services
             return await _placeRepository.GetByCategoryAsync(parsedCategory);
         }
 
-        public async Task<Place> CreatePlaceAsync(CreatePlaceDTO dto)
+        public async Task<Models.Place> CreatePlaceAsync(CreatePlaceDTO dto)
         {
-            // Обов'язкові поля вже перевірені валідацією DTO в контролері;
-            // GetValueOrDefault не дає сервісу впасти, якщо його викликають напряму (наприклад, у юніт-тестах)
-            var newPlace = new Place
+            var allPlaces = await _placeRepository.GetAllAsync();
+
+            if (allPlaces.Any(p => string.Equals(p.name, dto.name, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ArgumentException($"Місце з назвою '{dto.name}' вже існує.");
+            }
+
+            var newPlace = new Models.Place
             {
                 name = dto.name.Trim(),
                 category = dto.category.GetValueOrDefault(),
@@ -58,7 +63,6 @@ namespace Karpaty.Api.Services
             };
 
             await _placeRepository.CreateAsync(newPlace);
-
             return newPlace;
         }
 
