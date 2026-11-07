@@ -72,20 +72,24 @@ namespace Karpaty.Tests
         }
 
         [Fact]
-        public async Task CreatePlaceAsync_CreatesPlace()
-        {
-            var dto = new CreatePlaceDTO
-            {
-                name = "New place",
-                description = "Description",
-                imageUrl = "image.jpg"
-            };
+public async Task CreatePlaceAsync_CreatesPlace()
+{
+    var dto = new CreatePlaceDTO
+    {
+        name = "New place",
+        description = "Description",
+        imageUrl = "image.jpg"
+    };
 
-            _repositoryMock
-                .Setup(r => r.CreateAsync(It.IsAny<Place>()))
-                .Returns(Task.CompletedTask);
+    _repositoryMock
+        .Setup(r => r.GetAllAsync())
+        .ReturnsAsync(new List<Place>());
 
-            var result = await _service.CreatePlaceAsync(dto);
+    _repositoryMock
+        .Setup(r => r.CreateAsync(It.IsAny<Place>()))
+        .Returns(Task.CompletedTask);
+
+    var result = await _service.CreatePlaceAsync(dto);
 
             Assert.Equal("New place", result.name);
             Assert.Equal("Description", result.description);

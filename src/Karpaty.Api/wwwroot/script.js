@@ -1,45 +1,57 @@
 
 const API_URL = "/api";
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     checkHealth();
     loadPlaces();
     loadTips();
     setupFilters();
     setupModal();
     setupReviewForm();
+    setupAdminPanel();
     loadAllReviews();
 });
 
 // Перевірка стану API
 async function checkHealth() {
-    const statusBox = document.getElementById('health-status');
+    const statusBox = document.getElementById("health-status");
     if (!statusBox) return;
 
     try {
         const response = await fetch(`${API_URL}/health`);
 
         if (response.ok) {
-            statusBox.textContent = 'API працює стабільно ✅';
-            statusBox.style.backgroundColor = '#d4edda';
-            statusBox.style.color = '#155724';
+            statusBox.textContent = "API працює стабільно ✅";
+            statusBox.style.backgroundColor = "#d4edda";
+            statusBox.style.color = "#155724";
         } else {
-            statusBox.textContent = 'Помилка сервера ❌';
+            statusBox.textContent = "Помилка сервера ❌";
         }
     } catch (error) {
         console.error(error);
-        statusBox.textContent = 'Сервер не відповідає ❌';
-        statusBox.style.backgroundColor = '#f8d7da';
-        statusBox.style.color = '#721c24';
+        statusBox.textContent = "Сервер не відповідає ❌";
+        statusBox.style.backgroundColor = "#f8d7da";
+        statusBox.style.color = "#721c24";
     }
 }
 
-// Завантаження місць
-async function loadPlaces(category = '') {
-    const placesList = document.getElementById('places-list');
+// Безпечне відображення тексту
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+}
+
+// Завантаження туристичних місць
+async function loadPlaces(category = "") {
+    const placesList = document.getElementById("places-container");
     if (!placesList) return;
 
-    placesList.innerHTML = '<p class="placeholder">Дані завантажуються...</p>';
+    placesList.innerHTML = "<p>Завантаження місць...</p>";
 
     try {
         let url = `${API_URL}/places`;
@@ -51,218 +63,404 @@ async function loadPlaces(category = '') {
         const response = await fetch(url);
 
         if (!response.ok) {
-            throw new Error('Помилка завантаження місць');
+            throw new Error("Не вдалося завантажити місця");
         }
 
         const places = await response.json();
 
-        if (!places.length) {
-            placesList.innerHTML = '<p>Місць у цій категорії поки немає.</p>';
+        if (!Array.isArray(places) || places.length === 0) {
+            placesList.innerHTML = "<p>Місць поки немає.</p>";
             return;
         }
 
-        placesList.innerHTML = places.map(p => `
-            <div class="card">
-                <h3>${p.name}</h3>
-                <p><strong>Категорія:</strong> ${p.category}</p>
-                <p>${p.description ? p.description.substring(0, 100) + '...' : ''}</p>
-                <button class="details-btn"
-                    onclick='openModal(${JSON.stringify(p)})'>
-                    Детальніше
-                </button>
-            </div>
-        `).join('');
+        const adminKey = document
+            .getElementById("admin-key-input")?.value.trim() || "";
+
+        placesList.innerHTML = places.map(place => {
+            const id = escapeHtml(place.id);
+            const name = escapeHtml(place.name);
+            const description = escapeHtml(place.description);
+            const categoryName = escapeHtml(place.category);
+            const region = escapeHtml(place.region);
+            const difficulty = escapeHtml(place.difficulty);
+
+            const image = place.imageUrl
+                ? `<img src="${escapeHtml(place.imageUrl)}"
+                        alt="${name}"
+                        class="place-image">`
+                : "";
+
+            const deleteButton = adminKey
+                ? `<button type="button"
+                           onclick="deletePlace('${id}')">
+                       Видалити
+                   </button>`
+                : "";
+
+            return `
+                <article class="place-card">
+                    ${image}
+                    <h3>${name}</h3>
+                    <p>${description}</p>
+                    <p>Категорія: ${categoryName}</p>
+                    <p>Регіон: ${region}</p>
+                    <p>Складність: ${difficulty}</p>
+
+                    <button type="button"
+                            onclick="openPlaceDetails('${id}')">
+                        Детальніше
+                    </button>
+
+                    ${deleteButton}
+                </article>
+            `;
+        }).join("");
 
     } catch (error) {
         console.error(error);
         placesList.innerHTML =
-            '<p style="color:red;">Не вдалося завантажити місця.</p>';
-    }
-}
-
-// Завантаження порад
-async function loadTips() {
-    const tipsList = document.getElementById('tips-list');
-    if (!tipsList) return;
-
-    try {
-        const response = await fetch(`${API_URL}/tips`);
-
-        if (!response.ok) {
-            throw new Error('Помилка завантаження порад');
-        }
-
-        const tips = await response.json();
-
-        tipsList.innerHTML = tips.map(t => `
-            <div class="card">
-                <h3>${t.title}</h3>
-                <p>${t.content || t.text || ''}</p>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error(error);
-        tipsList.innerHTML =
-            '<p style="color:#666;">Поради тимчасово недоступні.</p>';
+            "<p>Помилка завантаження туристичних місць.</p>";
     }
 }
 
 // Фільтрація місць
 function setupFilters() {
-    const buttons = document.querySelectorAll('.filter-btn');
+    const buttons = document.querySelectorAll(".filter-btn");
 
-    buttons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            buttons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+    buttons.forEach(button => {
+        button.addEventListener("click", () => {
+            buttons.forEach(item => item.classList.remove("active"));
+            button.classList.add("active");
 
-            loadPlaces(btn.getAttribute('data-category') || '');
+            const category = button.dataset.category || "";
+            loadPlaces(category);
         });
     });
+}
+
+// Завантаження порад
+async function loadTips() {
+    const tipsContainer = document.getElementById("tips-container");
+    if (!tipsContainer) return;
+
+    try {
+        const response = await fetch(`${API_URL}/tips`);
+
+        if (!response.ok) {
+            throw new Error("Не вдалося завантажити поради");
+        }
+
+        const tips = await response.json();
+
+        if (!Array.isArray(tips) || tips.length === 0) {
+            tipsContainer.innerHTML = "<p>Порад поки немає.</p>";
+            return;
+        }
+
+        tipsContainer.innerHTML = tips.map(tip => `
+            <article class="tip-card">
+                <h3>${escapeHtml(tip.title)}</h3>
+                <p>${escapeHtml(tip.content ?? tip.description ?? "")}</p>
+            </article>
+        `).join("");
+
+    } catch (error) {
+        console.error(error);
+        tipsContainer.innerHTML =
+            "<p>Не вдалося завантажити поради.</p>";
+    }
 }
 
 // Налаштування модального вікна
 function setupModal() {
-    const modal = document.getElementById('place-modal');
-    const closeBtn = document.getElementById('close-modal');
+    const modal = document.getElementById("place-modal");
+    const closeButton = document.getElementById("close-modal");
 
-    if (!modal) return;
+    if (!modal || !closeButton) return;
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
+    closeButton.addEventListener("click", () => {
+        modal.style.display = "none";
+    });
 
-    window.addEventListener('click', event => {
+    modal.addEventListener("click", event => {
         if (event.target === modal) {
-            modal.style.display = 'none';
+            modal.style.display = "none";
         }
     });
 }
 
-// Відкриття деталей місця
-window.openModal = function(place) {
-    const modal = document.getElementById('place-modal');
-    const modalDetails = document.getElementById('modalDetails');
+// Детальна інформація про місце
+async function openPlaceDetails(id) {
+    const modal = document.getElementById("place-modal");
+    const details = document.getElementById("modalDetails");
 
-    if (!modal || !modalDetails) return;
+    if (!modal || !details) return;
 
-    window.currentPlaceName = place.name;
+    details.innerHTML = "<p>Завантаження...</p>";
+    modal.style.display = "block";
 
-    modalDetails.innerHTML = `
-        <h2>${place.name}</h2>
-        <p><strong>Категорія:</strong> ${place.category}</p>
-        <p>${place.description || ''}</p>
-        ${place.mapUrl
-            ? `<p><a href="${place.mapUrl}" target="_blank" rel="noopener noreferrer">Відкрити на карті 🗺️</a></p>`
-            : ''}
-    `;
+    try {
+        const response = await fetch(
+            `${API_URL}/places/${encodeURIComponent(id)}`
+        );
 
-    modal.style.display = 'block';
-};
+        if (!response.ok) {
+            throw new Error("Місце не знайдено");
+        }
+
+        const place = await response.json();
+
+        window.currentPlaceName = place.name;
+
+        const mapLink = place.latitude != null && place.longitude != null
+            ? `https://www.google.com/maps?q=${encodeURIComponent(place.latitude)},${encodeURIComponent(place.longitude)}`
+            : "";
+
+        details.innerHTML = `
+            <h2>${escapeHtml(place.name)}</h2>
+            <p>${escapeHtml(place.description)}</p>
+            <p>Категорія: ${escapeHtml(place.category)}</p>
+            <p>Регіон: ${escapeHtml(place.region)}</p>
+            <p>Складність: ${escapeHtml(place.difficulty)}</p>
+            ${mapLink
+                ? `<a href="${mapLink}" target="_blank" rel="noopener noreferrer">
+                       Відкрити на карті
+                   </a>`
+                : ""}
+        `;
+
+    } catch (error) {
+        console.error(error);
+        details.innerHTML = "<p>Не вдалося завантажити інформацію.</p>";
+    }
+}
 
 // Завантаження всіх відгуків
 async function loadAllReviews() {
-    const container = document.getElementById('reviews-container');
-    if (!container) return;
+    const reviewsContainer =
+        document.getElementById("reviews-container");
 
-    container.innerHTML = '<p>Завантаження відгуків...</p>';
+    if (!reviewsContainer) return;
 
     try {
         const response = await fetch(`${API_URL}/feedback`);
 
         if (!response.ok) {
-            throw new Error('Помилка завантаження відгуків');
+            throw new Error("Не вдалося завантажити відгуки");
         }
 
         const reviews = await response.json();
 
-        if (!reviews.length) {
-            container.innerHTML =
-                '<p>Ще немає відгуків. Оберіть місце та залиште перший!</p>';
+        if (!Array.isArray(reviews) || reviews.length === 0) {
+            reviewsContainer.innerHTML = "<p>Відгуків поки немає.</p>";
             return;
         }
 
-        container.innerHTML = reviews.map(r => `
-            <div class="card">
-                <strong>${r.name || 'Мандрівник'}</strong>
-                <span style="color:#f39c12;">
-                    ${'★'.repeat(Math.max(0, Math.min(5, Number(r.rating) || 0)))}
-                </span>
-                <p>${r.message || ''}</p>
-                <small>${r.createdAt
-                    ? new Date(r.createdAt).toLocaleString('uk-UA')
-                    : ''}</small>
-            </div>
-        `).join('');
+        reviewsContainer.innerHTML = reviews.map(review => {
+            const rating = Number(review.rating) || 0;
+            const stars = "★".repeat(Math.max(0, Math.min(5, rating)));
+
+            return `
+                <article class="review-card">
+                    <h3>${escapeHtml(review.name ?? "Анонім")}</h3>
+                    <p>${stars}</p>
+                    <p>${escapeHtml(review.message ?? "")}</p>
+                    <small>
+                        ${escapeHtml(review.createdAt ?? "")}
+                    </small>
+                </article>
+            `;
+        }).join("");
 
     } catch (error) {
         console.error(error);
-        container.innerHTML =
-            '<p style="color:red;">Не вдалося завантажити відгуки.</p>';
+        reviewsContainer.innerHTML =
+            "<p>Не вдалося завантажити відгуки.</p>";
     }
 }
 
-// Налаштування форми відгуків
+// Надсилання відгуку
 function setupReviewForm() {
-    const form = document.getElementById('review-form');
+    const form = document.getElementById("review-form");
     if (!form) return;
 
-    form.addEventListener('submit', async function(event) {
+    form.addEventListener("submit", async event => {
         event.preventDefault();
 
-        const placeName = window.currentPlaceName || 'Загальне місце';
-        const userMessage = document.getElementById('review-text').value.trim();
+        const name = document.getElementById("reviewer-name").value.trim();
+        const email = document.getElementById("reviewer-email").value.trim();
+        const rating = Number(
+            document.getElementById("review-rating").value
+        );
+        const userMessage =
+            document.getElementById("review-text").value.trim();
 
-        const newReview = {
-            name: document.getElementById('reviewer-name').value.trim(),
-            email: document.getElementById('reviewer-email').value.trim(),
-            rating: parseInt(
-                document.getElementById('review-rating').value,
-                10
-            ),
-            message: `📍 [Місце: ${placeName}] — ${userMessage}`
-        };
+        const placeName = window.currentPlaceName || "Не вказано";
+
+        const message = `📍 [Місце: ${placeName}] — ${userMessage}`;
 
         try {
             const response = await fetch(`${API_URL}/feedback`, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json'
+                    "Content-Type": "application/json"
                 },
-                body: JSON.stringify(newReview)
+                body: JSON.stringify({
+                    name,
+                    email,
+                    rating,
+                    message
+                })
             });
 
-            if (response.ok) {
-                form.reset();
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
 
-                const modal = document.getElementById('place-modal');
-                if (modal) {
-                    modal.style.display = 'none';
+                if (response.status === 429) {
+                    alert("Забагато запитів. Спробуйте пізніше.");
+                    return;
                 }
 
-                window.currentPlaceName = null;
-
-                await loadAllReviews();
-
-                alert('Дякуємо! Ваш відгук успішно додано.');
-
-            } else if (response.status === 429) {
-                alert('Забагато запитів! Зачекайте хвилину.');
-
-            } else {
-                const errorData = await response.json().catch(() => ({}));
-                alert(
-                    'Помилка при відправці відгуку: ' +
-                    (errorData.error || 'невірні дані')
-                );
+                throw new Error(error.error || "Не вдалося надіслати відгук");
             }
 
+            alert("Відгук успішно надіслано!");
+
+            form.reset();
+
+            const modal = document.getElementById("place-modal");
+            if (modal) modal.style.display = "none";
+
+            loadAllReviews();
+
         } catch (error) {
-            console.error('Помилка мережі:', error);
-            alert('Сталася помилка мережі при надсиланні відгуку.');
+            console.error(error);
+            alert(error.message || "Помилка під час надсилання відгуку.");
         }
     });
 }
+
+// Адмін-панель: додавання та видалення місць
+function setupAdminPanel() {
+    const form = document.getElementById("add-place-form");
+    const adminKeyInput = document.getElementById("admin-key-input");
+            loadPlaces(
+                document.querySelector(".filter-btn.active")?.dataset.category || ""
+    if (!form) return;
+
+        event.preventDefault();
+        const adminKey = adminKeyInput?.value.trim() || "";
+
+        if (!adminKey) {
+            alert("Введіть адміністративний ключ!");
+        }
+
+        const newPlace = {
+            name: document.getElementById("place-name").value.trim(),
+            category: document.getElementById("place-category").value,
+            region: document.getElementById("place-region").value,
+            description: document.getElementById("place-desc").value.trim(),
+            difficulty: document.getElementById("place-difficulty").value,
+            latitude: Number(
+                document.getElementById("place-latitude").value
+            ),
+            longitude: Number(
+                document.getElementById("place-longitude").value
+            ),
+            imageUrl: document.getElementById("place-image").value.trim() || null
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/places`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Admin-Key": adminKey
+                },
+                body: JSON.stringify(newPlace)
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error || "Не вдалося додати місце");
+            }
+                method: "POST",
+            return;
+
+            alert("Місце успішно додано!");
+
+    form.addEventListener("submit", async event => {
+
+
+    }
+            form.reset();
+
+        });
+            const activeCategory =
+            );
+
+                document.querySelector(".filter-btn.active")?.dataset.category || "";
+        adminKeyInput.addEventListener("input", () => {
+
+
+            loadPlaces(activeCategory);
+
+
+        } catch (error) {
+            console.error(error);
+
+            alert(error.message || "Помилка під час додавання місця.");
+
+        }
+
+    });
+
+}
+
+
+// Видалення місця
+window.deletePlace = async function(id) {
+    const adminKey =
+
+        document.getElementById("admin-key-input")?.value.trim() || "";
+
+
+    if (!adminKey) {
+        alert("Введіть адміністративний ключ!");
+        return;
+    }
+
+    if (!confirm("Ви впевнені, що хочете видалити це місце?")) {
+        return;
+
+    }
+
+    try {
+        const response = await fetch(
+            `${API_URL}/places/${encodeURIComponent(id)}`,
+
+            {
+                method: "DELETE",
+                headers: {
+                    "X-Admin-Key": adminKey
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || "Не вдалося видалити місце");
+        }
+
+        alert("Місце успішно видалено!");
+
+        const activeCategory =
+            document.querySelector(".filter-btn.active")?.dataset.category || "";
+
+        loadPlaces(activeCategory);
+
+    } catch (error) {
+        console.error(error);
+        alert(error.message || "Помилка під час видалення місця.");
+    }
+};
+
