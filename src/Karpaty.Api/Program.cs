@@ -47,18 +47,18 @@ builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // enum передається рядками (waterfall, easy ...), а не числами
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
-// Невалідні дані -> 400 у форматі контракту { "status": 400, "error": "текст" }
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState.Values
             .SelectMany(v => v.Errors)
-            .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Некоректні дані запиту" : e.ErrorMessage)
+            .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage)
+                ? "Некоректні дані запиту"
+                : e.ErrorMessage)
             .Distinct();
 
         return new BadRequestObjectResult(new
@@ -69,9 +69,9 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 
-// --- 4. Обмеження частоти запитів (захист від спаму) ---
-// За замовчуванням 3 запити на хвилину з однієї IP-адреси на POST /api/feedback.
-var feedbackPerMinute = builder.Configuration.GetValue("RateLimiting:FeedbackPerMinute", 3);
+// --- 4. Обмеження частоти запитів ---
+var feedbackPerMinute =
+    builder.Configuration.GetValue("RateLimiting:FeedbackPerMinute", 3);
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -90,18 +90,24 @@ builder.Services.AddRateLimiter(options =>
 
     options.OnRejected = async (context, cancellationToken) =>
     {
-        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        if (context.Lease.TryGetMetadata(
+                MetadataName.RetryAfter,
+                out var retryAfter))
         {
             context.HttpContext.Response.Headers["Retry-After"] =
                 ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
         }
 
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsJsonAsync(new
-        {
-            status = 429,
-            error = "Забагато запитів. Спробуйте ще раз через хвилину."
-        }, cancellationToken);
+        context.HttpContext.Response.StatusCode =
+            StatusCodes.Status429TooManyRequests;
+
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new
+            {
+                status = 429,
+                error = "Забагато запитів. Спробуйте ще раз через хвилину."
+            },
+            cancellationToken);
     };
 });
 
@@ -117,11 +123,14 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
-    // Підтягує XML-коментарі (summary, remarks, response) у Swagger UI
-    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+    var xmlFile =
+        $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+
+    options.IncludeXmlComments(
+        Path.Combine(AppContext.BaseDirectory, xmlFile));
 });
 
 var app = builder.Build();
@@ -130,7 +139,7 @@ var app = builder.Build();
 await DBSeeder.SeedPlacesAsync(app.Services);
 await DBSeeder.SeedTipsAsync(app.Services);
 
-// --- 7. Middleware (порядок важливий) ---
+// --- 7. Middleware ---
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -143,9 +152,13 @@ app.UseStaticFiles();
 
 app.MapControllers();
 
-// Невідомі маршрути API -> JSON 404, а не index.html
+// Невідомі маршрути API -> JSON 404
 app.Map("/api/{**slug}", () => Results.Json(
-    new { status = 404, error = "Маршрут API не знайдено" },
+    new
+    {
+        status = 404,
+        error = "Маршрут API не знайдено"
+    },
     statusCode: StatusCodes.Status404NotFound));
 
 // Усе інше - сторінка фронтенду
