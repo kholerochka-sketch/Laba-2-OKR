@@ -9,9 +9,10 @@ namespace Karpaty.Api.Services
     {
         private readonly IPlaceRepository _placeRepository;
         private readonly ILogger<PlaceService> _logger;
-        public PlaceService(IPlaceRepository placeRepository)
+        public PlaceService(IPlaceRepository placeRepository, ILogger<PlaceService> logger)
         {
             _placeRepository = placeRepository;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<Models.Place>> GetAllPlacesAsync()
