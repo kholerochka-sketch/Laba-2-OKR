@@ -1,16 +1,17 @@
-using System.Reflection;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
 using Karpaty.Api.DBCommunication;
-using Karpaty.Api.DBCommunication.Repositories;
 using Karpaty.Api.DBCommunication.Reposetories;
+using Karpaty.Api.DBCommunication.Repositories;
 using Karpaty.Api.DBCommunication.Repositories.Interfaces;
+using Karpaty.Api.Middlewares.Karpaty.Api.Middlewares;
 using Karpaty.Api.Seeder;
 using Karpaty.Api.Services;
 using Karpaty.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MongoDB.Driver;
+using System.Reflection;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -129,6 +130,8 @@ var app = builder.Build();
 // --- 6. Початкові дані ---
 await DBSeeder.SeedPlacesAsync(app.Services);
 await DBSeeder.SeedTipsAsync(app.Services);
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 // --- 7. Middleware (порядок важливий) ---
 app.UseSwagger();
