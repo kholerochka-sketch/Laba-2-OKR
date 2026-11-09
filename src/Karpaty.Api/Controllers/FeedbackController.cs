@@ -51,8 +51,8 @@ public class FeedbackController : ControllerBase
     [HttpPost]
     [EnableRateLimiting("feedback")]
     [ProducesResponseType(typeof(Feedback), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Create([FromBody] CreateFeedbackDTO dto)
     {
         var created = await _feedbackService.CreateFeedbackAsync(dto);
@@ -82,8 +82,8 @@ public class FeedbackController : ControllerBase
     [HttpGet("{id}")]
     [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(typeof(Feedback), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(
         string id,
         [FromHeader(Name = AdminKeyFilter.HeaderName)] string? adminKey = null)
@@ -121,9 +121,9 @@ public class FeedbackController : ControllerBase
     [HttpPut("{id}")]
     [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(
         string id,
         [FromBody] UpdateFeedbackDTO dto,
@@ -154,8 +154,8 @@ public class FeedbackController : ControllerBase
     [HttpDelete("{id}")]
     [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(
         string id,
         [FromHeader(Name = AdminKeyFilter.HeaderName)] string? adminKey = null)

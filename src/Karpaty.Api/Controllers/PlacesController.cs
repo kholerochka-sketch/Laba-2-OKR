@@ -1,4 +1,3 @@
-
 using Karpaty.Api.DTO;
 using Karpaty.Api.Filters;
 using Karpaty.Api.Models;
@@ -40,7 +39,7 @@ public class PlacesController : ControllerBase
     /// <response code="400">Невідома категорія.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<Place>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] string? category = null)
     {
         var places = await _placeService.GetAllPlacesAsync();
@@ -76,7 +75,7 @@ public class PlacesController : ControllerBase
     /// <response code="404">Місце не знайдено (або некоректний формат ID).</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Place), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id)
     {
         var place = await FindPlaceAsync(id);
@@ -116,8 +115,8 @@ public class PlacesController : ControllerBase
     [HttpPost]
     [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(typeof(Place), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Create(
         [FromBody] CreatePlaceDTO dto,
         [FromHeader(Name = AdminKeyFilter.HeaderName)] string? adminKey = null)
@@ -156,9 +155,9 @@ public class PlacesController : ControllerBase
     [HttpPut("{id}")]
     [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(
         string id,
         [FromBody] UpdatePlaceDTO dto,
@@ -200,8 +199,8 @@ public class PlacesController : ControllerBase
     [HttpDelete("{id}")]
     [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(
         string id,
         [FromHeader(Name = AdminKeyFilter.HeaderName)] string? adminKey = null)

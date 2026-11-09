@@ -10,6 +10,7 @@ using Karpaty.Api.Services;
 using Karpaty.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.OpenApi;
 using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -112,13 +113,29 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // --- 5. CORS і Swagger ---
+// Сайт віддається цим самим сервером (wwwroot), тому CORS потрібен лише для запитів з інших адрес
+// (наприклад, фронтенд на іншому порту). За замовчуванням дозволено будь-яке джерело.
+// Щоб обмежити, задайте в налаштуваннях: "Cors": { "AllowedOrigins": [ "https://my-site.com" ] }
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins);
+        }
+        else
+        {
+            policy.AllowAnyOrigin();
+        }
+
+        policy.AllowAnyHeader()                              // у тому числі X-Admin-Key
+              .AllowAnyMethod()                              // GET, POST, PUT, DELETE, OPTIONS
+              .WithExposedHeaders("Retry-After", "Location"); // щоб JS міг прочитати ці заголовки
     });
 });
 
@@ -126,18 +143,40 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
 {
-    var xmlFile =
-        $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Karpaty Guide API",
+        Version = "v1",
+        Description = "API туристичного путівника по Карпатах: місця, поради та відгуки. " +
+                      "Методи запису (POST, PUT, DELETE для місць і порад, читання та зміна відгуків) " +
+                      "захищені заголовком X-Admin-Key. Помилки повертаються у форматі " +
+                      "{ \"status\": 400, \"error\": \"текст\" }."
+    });
 
-    options.IncludeXmlComments(
-        Path.Combine(AppContext.BaseDirectory, xmlFile));
+    // Підтягує XML-коментарі (summary, remarks, response, example) у Swagger UI
+    var xmlPath = Path.Combine(
+        AppContext.BaseDirectory,
+        $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
+
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
 });
 
 var app = builder.Build();
 
 // --- 6. Початкові дані ---
-await DBSeeder.SeedPlacesAsync(app.Services);
-await DBSeeder.SeedTipsAsync(app.Services);
+// Якщо база недоступна, сервер все одно стартує, а /api/health покаже database: error
+try
+{
+    await DBSeeder.SeedPlacesAsync(app.Services);
+    await DBSeeder.SeedTipsAsync(app.Services);
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Не вдалося заповнити базу початковими даними");
+}
 
 // --- 7. Middleware ---
 app.UseSwagger();
