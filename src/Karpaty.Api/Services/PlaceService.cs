@@ -1,7 +1,8 @@
-﻿using Karpaty.Api.DBCommunication.Repositories.Interfaces;
+using Karpaty.Api.DBCommunication.Repositories.Interfaces;
 using Karpaty.Api.DTO;
 using Karpaty.Api.Models;
 using Karpaty.Api.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Karpaty.Api.Services
 {
@@ -15,13 +16,13 @@ namespace Karpaty.Api.Services
             _logger = logger;
         }
 
-        public async Task<IEnumerable<Models.Place>> GetAllPlacesAsync()
+        public async Task<IEnumerable<Place>> GetAllPlacesAsync()
         {
             _logger.LogInformation("Запит на отримання всіх туристичних місць.");
             return await _placeRepository.GetAllAsync();
         }
 
-        public async Task<Models.Place?> GetPlaceByIdAsync(string id)
+        public async Task<Place?> GetPlaceByIdAsync(string id)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -29,9 +30,8 @@ namespace Karpaty.Api.Services
                 return null;
             }
 
-            var place = await _placeRepository.GetByIdAsync(id);
-
-            return place;
+            _logger.LogInformation("Отримання місця з ID {PlaceId}", id);
+            return await _placeRepository.GetByIdAsync(id);
         }
 
         public async Task<IEnumerable<Place>> GetPlacesByCategoryAsync(string categoryString)
@@ -41,41 +41,46 @@ namespace Karpaty.Api.Services
             {
                 _logger.LogWarning("Спроба отримати місце з невідомою категорією");
                 var allowedValues = string.Join(", ", Enum.GetNames(typeof(PlaceCategory)));
-                throw new ArgumentException($"Невідома категорія '{categoryString}'. Допустимі значення: {allowedValues}");
+                _logger.LogWarning("Невідома категорія місць: {Category}", categoryString);
+                throw new ArgumentException(
+                    $"Невідома категорія '{categoryString}'. Допустимі значення: {allowedValues}");
             }
 
+            _logger.LogInformation("Отримання місць за категорією {Category}", parsedCategory);
             return await _placeRepository.GetByCategoryAsync(parsedCategory);
         }
 
-        public async Task<Models.Place> CreatePlaceAsync(CreatePlaceDTO dto)
+        public async Task<Place> CreatePlaceAsync(CreatePlaceDTO dto)
         {
             _logger.LogInformation("Спроба створення нового місця: {Name}", dto.name);
             var allPlaces = await _placeRepository.GetAllAsync();
 
-            if (allPlaces.Any(p => string.Equals(p.name, dto.name, StringComparison.OrdinalIgnoreCase)))
+            if (allPlaces.Any(p => string.Equals(
+                p.name, dto.name, StringComparison.OrdinalIgnoreCase)))
             {
                 _logger.LogWarning("Створення скасовано. Місце з назвою '{Name}' вже існує.", dto.name);
                 throw new ArgumentException($"Місце з назвою '{dto.name}' вже існує.");
             }
 
-            var newPlace = new Models.Place
+            var newPlace = new Place
             {
-                name = dto.name,
-                category = dto.category,
-                region = dto.region,
-                description = dto.description,
-                difficulty = dto.difficulty,
-                latitude = dto.latitude,
-                longitude = dto.longitude,
-                imageUrl = dto.imageUrl
+                name = dto.name.Trim(),
+                category = dto.category.GetValueOrDefault(),
+                region = dto.region.GetValueOrDefault(),
+                description = dto.description.Trim(),
+                difficulty = dto.difficulty.GetValueOrDefault(),
+                latitude = dto.latitude.GetValueOrDefault(),
+                longitude = dto.longitude.GetValueOrDefault(),
+                imageUrl = dto.imageUrl?.Trim() ?? string.Empty
             };
 
+            _logger.LogInformation("Створення нового місця {PlaceName}", newPlace.name);
             await _placeRepository.CreateAsync(newPlace);
             _logger.LogInformation("Місце '{Name}' успішно створено з ID: {Id}", newPlace.name, newPlace.id);
             return newPlace;
         }
 
-        public async Task<Models.Place> UpdatePlaceAsync(string id, UpdatePlaceDTO dto)
+        public async Task<Place?> UpdatePlaceAsync(string id, UpdatePlaceDTO dto)
         {
             _logger.LogInformation("Спроба оновлення місця з ID: {Id}", id);
             var existingPlace = await _placeRepository.GetByIdAsync(id);
@@ -85,12 +90,37 @@ namespace Karpaty.Api.Services
                 return null; 
             }
 
-            if (dto.description != null)
-                existingPlace.description = dto.description;
+            if (existingPlace is null)
+            {
+                _logger.LogWarning("Місце з ID {PlaceId} не знайдено для оновлення", id);
+                return null;
+            }
 
-            if (dto.imageUrl != null)
-                existingPlace.imageUrl = dto.imageUrl;
+            if (!string.IsNullOrWhiteSpace(dto.name))
+                existingPlace.name = dto.name.Trim();
 
+            if (dto.category.HasValue)
+                existingPlace.category = dto.category.Value;
+
+            if (dto.region.HasValue)
+                existingPlace.region = dto.region.Value;
+
+            if (dto.description is not null)
+                existingPlace.description = dto.description.Trim();
+
+            if (dto.difficulty.HasValue)
+                existingPlace.difficulty = dto.difficulty.Value;
+
+            if (dto.latitude.HasValue)
+                existingPlace.latitude = dto.latitude.Value;
+
+            if (dto.longitude.HasValue)
+                existingPlace.longitude = dto.longitude.Value;
+
+            if (dto.imageUrl is not null)
+                existingPlace.imageUrl = dto.imageUrl.Trim();
+
+            _logger.LogInformation("Оновлення місця з ID {PlaceId}", id);
             await _placeRepository.UpdateAsync(existingPlace);
             _logger.LogInformation("Місце з ID: {Id} успішно оновлено.", id);
             return existingPlace;
@@ -107,6 +137,13 @@ namespace Karpaty.Api.Services
                 _logger.LogWarning("Видалення скасовано. Місце з ID '{Id}' не знайдено.", id);
             }
 
+            if (existingPlace is null)
+            {
+                _logger.LogWarning("Місце з ID {PlaceId} не знайдено для видалення", id);
+                return false;
+            }
+
+            _logger.LogInformation("Видалення місця з ID {PlaceId}", id);
             await _placeRepository.DeleteAsync(id);
             _logger.LogInformation("Місце з ID: {Id} успішно видалено.", id);
             return true;

@@ -1,7 +1,8 @@
+
 const API_URL = "/api";
 let allPlacesData = [];
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     checkHealth();
     loadPlaces();
     loadTips();
@@ -25,21 +26,24 @@ const difficultyTranslations = {
 };
 
 async function checkHealth() {
-    const statusBox = document.getElementById('health-status');
+    const statusBox = document.getElementById("health-status");
     if (!statusBox) return;
+
     try {
-        const response = await fetch('/api/health');
+        const response = await fetch(`${API_URL}/health`);
+
         if (response.ok) {
-            statusBox.textContent = 'API працює стабільно ✅';
-            statusBox.style.backgroundColor = '#d4edda';
-            statusBox.style.color = '#155724';
+            statusBox.textContent = "API працює стабільно ✅";
+            statusBox.style.backgroundColor = "#d4edda";
+            statusBox.style.color = "#155724";
         } else {
-            statusBox.textContent = 'Помилка сервера ❌';
+            statusBox.textContent = "Помилка сервера ❌";
         }
     } catch (error) {
-        statusBox.textContent = 'Сервер не відповідає ❌';
-        statusBox.style.backgroundColor = '#f8d7da';
-        statusBox.style.color = '#721c24';
+        console.error(error);
+        statusBox.textContent = "Сервер не відповідає ❌";
+        statusBox.style.backgroundColor = "#f8d7da";
+        statusBox.style.color = "#721c24";
     }
 }
 
@@ -96,10 +100,12 @@ async function loadPlaces(category = '') {
 
     placesList.innerHTML = '<p class="placeholder" role="status">Дані завантажуються...</p>';
     try {
-        let url = '/api/places';
+        let url = `${API_URL}/places`;
+
         if (category) {
-            url += `?category=${category}`;
+            url += `?category=${encodeURIComponent(category)}`;
         }
+
         const response = await fetch(url);
         if (response.status === 404) {
             placesList.innerHTML = `
@@ -123,7 +129,29 @@ async function loadPlaces(category = '') {
             return;
         }
 
-        const adminKey = document.getElementById('admin-key-input')?.value || '';
+        const adminKey = document
+            .getElementById("admin-key-input")?.value.trim() || "";
+
+        placesList.innerHTML = places.map(place => {
+            const id = escapeHtml(place.id);
+            const name = escapeHtml(place.name);
+            const description = escapeHtml(place.description);
+            const categoryName = escapeHtml(place.category);
+            const region = escapeHtml(place.region);
+            const difficulty = escapeHtml(place.difficulty);
+
+            const image = place.imageUrl
+                ? `<img src="${escapeHtml(place.imageUrl)}"
+                        alt="${name}"
+                        class="place-image">`
+                : "";
+
+            const deleteButton = adminKey
+                ? `<button type="button"
+                           onclick="deletePlace('${id}')">
+                       Видалити
+                   </button>`
+                : "";
 
         placesList.innerHTML = places.map(p => {
             const placeId = p.id || p._id;
@@ -172,11 +200,16 @@ function escapeHtml(str) {
 
 // Кольорові поради (F3)
 async function loadTips() {
-    const tipsList = document.getElementById('tips-list');
-    if (!tipsList) return;
+    const tipsContainer = document.getElementById("tips-container");
+    if (!tipsContainer) return;
+
     try {
-        const response = await fetch('/api/tips');
-        if (!response.ok) return;
+        const response = await fetch(`${API_URL}/tips`);
+
+        if (!response.ok) {
+            throw new Error("Не вдалося завантажити поради");
+        }
+
         const tips = await response.json();
 
         if (!Array.isArray(tips) || tips.length === 0) {
@@ -191,7 +224,9 @@ async function loadTips() {
             </div>
         `).join('');
     } catch (error) {
-        tipsList.innerHTML = '<p style="color: #666;">Поради тимчасово недоступні.</p>';
+        console.error(error);
+        tipsContainer.innerHTML =
+            "<p>Не вдалося завантажити поради.</p>";
     }
 }
 
@@ -208,19 +243,18 @@ function setupFilters() {
 }
 
 function setupModal() {
-    const modal = document.getElementById('placeModal');
-    const closeBtn = document.querySelector('.close-btn');
-    if (!modal) return;
+    const modal = document.getElementById("place-modal");
+    const closeButton = document.getElementById("close-modal");
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-    }
+    if (!modal || !closeButton) return;
 
-    window.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
+    closeButton.addEventListener("click", () => {
+        modal.style.display = "none";
+    });
+
+    modal.addEventListener("click", event => {
+        if (event.target === modal) {
+            modal.style.display = "none";
         }
     });
 
@@ -239,7 +273,7 @@ window.openModalById = function (placeId) {
     const modalDetails = document.getElementById('modalDetails');
     if (!modal || !modalDetails) return;
 
-    window.currentPlaceName = place.name;
+    if (!modal || !details) return;
 
     const imageUrl = getPlaceImage(place);
     const formattedRegion = place.region ? place.region.replace(/_/g, ' ') : '';
@@ -263,18 +297,28 @@ window.openModalById = function (placeId) {
         <p><a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" class="map-link">Відкрити місце на Google Картах 🗺️</a></p>
     `;
 
-    modal.style.display = 'block';
-};
+    try {
+        const response = await fetch(
+            `${API_URL}/places/${encodeURIComponent(id)}`
+        );
+
+        if (!response.ok) {
+            throw new Error("Місце не знайдено");
+        }
 
 // Відгуки (F4)
 async function loadAllReviews() {
-    const container = document.getElementById('reviews-container');
-    if (!container) return;
+    const reviewsContainer =
+        document.getElementById("reviews-container");
 
-    container.innerHTML = '<p style="color: #666;">Завантаження відгуків...</p>';
+    if (!reviewsContainer) return;
+
     try {
-        const response = await fetch('/api/feedback');
-        if (!response.ok) throw new Error('Помилка завантаження відгуків');
+        const response = await fetch(`${API_URL}/feedback`);
+
+        if (!response.ok) {
+            throw new Error("Не вдалося завантажити відгуки");
+        }
 
         const reviews = await response.json();
 
@@ -295,33 +339,42 @@ async function loadAllReviews() {
         `).join('');
     } catch (error) {
         console.error(error);
-        container.innerHTML = '<p style="color: red;">Не вдалося завантажити відгуки.</p>';
+        reviewsContainer.innerHTML =
+            "<p>Не вдалося завантажити відгуки.</p>";
     }
 }
 
 function setupReviewForm() {
-    const form = document.getElementById('review-form');
+    const form = document.getElementById("review-form");
     if (!form) return;
 
-    form.addEventListener('submit', async function (e) {
-        e.preventDefault();
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
 
-        const placeName = window.currentPlaceName || "Загальне місце";
-        const userMessage = document.getElementById('review-text').value;
-        const formattedMessage = `📍 [Місце: ${placeName}] — ${userMessage}`;
+        const name = document.getElementById("reviewer-name").value.trim();
+        const email = document.getElementById("reviewer-email").value.trim();
+        const rating = Number(
+            document.getElementById("review-rating").value
+        );
+        const userMessage =
+            document.getElementById("review-text").value.trim();
 
-        const newReview = {
-            name: document.getElementById('reviewer-name').value,
-            email: document.getElementById('reviewer-email').value,
-            rating: parseInt(document.getElementById('review-rating').value),
-            message: formattedMessage
-        };
+        const placeName = window.currentPlaceName || "Не вказано";
+
+        const message = `📍 [Місце: ${placeName}] — ${userMessage}`;
 
         try {
-            const response = await fetch('/api/feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newReview)
+            const response = await fetch(`${API_URL}/feedback`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    name,
+                    email,
+                    rating,
+                    message
+                })
             });
 
             if (response.ok) {
@@ -336,9 +389,19 @@ function setupReviewForm() {
                 const errData = await response.json().catch(() => ({}));
                 alert(errData.error || 'Помилка при відправці відгуку.');
             }
+
+            alert("Відгук успішно надіслано!");
+
+            form.reset();
+
+            const modal = document.getElementById("place-modal");
+            if (modal) modal.style.display = "none";
+
+            loadAllReviews();
+
         } catch (error) {
             console.error(error);
-            alert('Помилка мережі.');
+            alert(error.message || "Помилка під час надсилання відгуку.");
         }
     });
 }
@@ -355,13 +418,11 @@ function setupAdminPanel() {
 
     if (!form) return;
 
-    form.addEventListener('submit', async function (e) {
-        e.preventDefault();
+        event.preventDefault();
+        const adminKey = adminKeyInput?.value.trim() || "";
 
-        const adminKey = adminKeyInput ? adminKeyInput.value.trim() : '';
         if (!adminKey) {
-            alert('Будь ласка, введіть адмін-ключ вище!');
-            return;
+            alert("Введіть адміністративний ключ!");
         }
 
         const newPlace = {
@@ -376,11 +437,10 @@ function setupAdminPanel() {
         };
 
         try {
-            const response = await fetch('/api/places', {
-                method: 'POST',
+            const response = await fetch(`${API_URL}/places`, {
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-Admin-Key': adminKey
+                    "Content-Type": "application/json",
+                    "X-Admin-Key": adminKey
                 },
                 body: JSON.stringify(newPlace)
             });
@@ -395,40 +455,78 @@ function setupAdminPanel() {
                 const errData = await response.json().catch(() => ({}));
                 alert(errData.error || 'Помилка при додаванні місця.');
             }
+                method: "POST",
+            return;
+
+            alert("Місце успішно додано!");
+
+    form.addEventListener("submit", async event => {
+
+
+    }
+            form.reset();
+
+        });
+            const activeCategory =
+            );
+
+                document.querySelector(".filter-btn.active")?.dataset.category || "";
+        adminKeyInput.addEventListener("input", () => {
+
+
+            loadPlaces(activeCategory);
+
+
         } catch (error) {
             console.error(error);
-            alert('Помилка мережі.');
+
+            alert(error.message || "Помилка під час додавання місця.");
+
         }
+
     });
+
 }
 
 window.deletePlace = async function (id) {
     const adminKey = document.getElementById('admin-key-input')?.value.trim() || '';
     if (!adminKey) {
-        alert('Введіть адмін-ключ у полі зверху!');
+        alert("Введіть адміністративний ключ!");
         return;
     }
 
-    if (!confirm('Ви впевнені, що хочете видалити це місце?')) return;
+    if (!confirm("Ви впевнені, що хочете видалити це місце?")) {
+        return;
+
+    }
 
     try {
-        const response = await fetch(`/api/places/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'X-Admin-Key': adminKey
-            }
-        });
+        const response = await fetch(
+            `${API_URL}/places/${encodeURIComponent(id)}`,
 
-        if (response.ok) {
-            loadPlaces();
-            alert('Місце успішно видалено!');
-        } else if (response.status === 401) {
-            alert('Неправильний адмін-ключ!');
-        } else {
-            alert('Не вдалося видалити місце.');
+            {
+                method: "DELETE",
+                headers: {
+                    "X-Admin-Key": adminKey
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || "Не вдалося видалити місце");
         }
+
+        alert("Місце успішно видалено!");
+
+        const activeCategory =
+            document.querySelector(".filter-btn.active")?.dataset.category || "";
+
+        loadPlaces(activeCategory);
+
     } catch (error) {
         console.error(error);
-        alert('Помилка мережі.');
+        alert(error.message || "Помилка під час видалення місця.");
     }
 };
+
