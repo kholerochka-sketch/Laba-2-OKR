@@ -14,6 +14,13 @@ namespace Karpaty.Api.DBCommunication.Reposetories
         public PlaceRepository(IMongoDatabase database)
         {
             _collection = database.GetCollection<PlaceDocument>("places");
+            var indexKeysDefinition = Builders<PlaceDocument>.IndexKeys
+                .Ascending(place => place.category)
+                .Ascending(place => place.name);
+
+            var indexModel = new CreateIndexModel<PlaceDocument>(indexKeysDefinition);
+
+            _collection.Indexes.CreateOne(indexModel);
         }
 
         public async Task CreateIndexesAsync()
