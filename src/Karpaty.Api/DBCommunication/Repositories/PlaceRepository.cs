@@ -1,9 +1,9 @@
-﻿using Karpaty.Api.DBCommunication.Documents;
+
+using Karpaty.Api.DBCommunication.Documents;
 using Karpaty.Api.DBCommunication.Repositories.Interfaces;
 using Karpaty.Api.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using System.Linq;
 
 namespace Karpaty.Api.DBCommunication.Reposetories
 {
@@ -16,24 +16,58 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             _collection = database.GetCollection<PlaceDocument>("places");
         }
 
+        public async Task CreateIndexesAsync()
+        {
+            var categoryIndex = new CreateIndexModel<PlaceDocument>(
+                Builders<PlaceDocument>.IndexKeys.Ascending(x => x.category),
+                new CreateIndexOptions { Name = "category_index" }
+            );
+
+            var regionIndex = new CreateIndexModel<PlaceDocument>(
+                Builders<PlaceDocument>.IndexKeys.Ascending(x => x.region),
+                new CreateIndexOptions { Name = "region_index" }
+            );
+
+            await _collection.Indexes.CreateManyAsync(
+                new[] { categoryIndex, regionIndex }
+            );
+        }
+
         public async Task<Place?> GetByIdAsync(string id)
         {
             if (!ObjectId.TryParse(id, out _))
-            {
                 return null;
-            }
 
-            var document = await _collection.Find(x => x.id == id).FirstOrDefaultAsync();
+            var document = await _collection
+                .Find(x => x.id == id)
+                .FirstOrDefaultAsync();
+
             return document != null ? ToModel(document) : null;
         }
 
         public async Task<List<Place>> GetByCategoryAsync(PlaceCategory category)
         {
-            var filter = Builders<PlaceDocument>.Filter.Eq(doc => doc.category, category);
+            var filter = Builders<PlaceDocument>.Filter
+                .Eq(doc => doc.category, category);
 
             var documents = await _collection.Find(filter).ToListAsync();
+
             return documents.Select(ToModel).ToList();
         }
+
+        public async Task<bool> ExistsByNameAsync(string name)
+        {
+            var filter = Builders<PlaceDocument>.Filter.Regex(
+                x => x.name,
+                new BsonRegularExpression(
+                    $"^{System.Text.RegularExpressions.Regex.Escape(name.Trim())}$",
+                    "i"
+                )
+            );
+
+            return await _collection.Find(filter).AnyAsync();
+        }
+
         public async Task CreateAsync(Place place)
         {
             var document = ToDocument(place);
@@ -50,12 +84,14 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             return documents.Select(ToModel).ToList();
         }
 
-
-
         public async Task UpdateAsync(Place place)
         {
             var document = ToDocument(place);
-            await _collection.ReplaceOneAsync(x => x.id == place.id, document);
+
+            await _collection.ReplaceOneAsync(
+                x => x.id == place.id,
+                document
+            );
         }
 
         public async Task DeleteAsync(string id)
@@ -63,8 +99,7 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             await _collection.DeleteOneAsync(x => x.id == id);
         }
 
-
-        private Place ToModel(PlaceDocument document)
+        private static Place ToModel(PlaceDocument document)
         {
             return new Place
             {
@@ -80,7 +115,7 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             };
         }
 
-        private PlaceDocument ToDocument(Place place)
+        private static PlaceDocument ToDocument(Place place)
         {
             return new PlaceDocument
             {
@@ -95,6 +130,5 @@ namespace Karpaty.Api.DBCommunication.Reposetories
                 imageUrl = place.imageUrl
             };
         }
-
     }
 }

@@ -1,3 +1,4 @@
+
 using System.Reflection;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -14,14 +15,15 @@ using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. Налаштування бази даних MongoDB ---
+// --- 1. Налаштування MongoDB ---
 builder.Services.Configure<MongoDBSettings>(
     builder.Configuration.GetSection("MongoDBSettings"));
 
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("MongoDBSettings:ConnectionString")
-                           ?? builder.Configuration["MongoDBSettings:ConnectionString"];
+    var connectionString =
+        builder.Configuration.GetConnectionString("MongoDBSettings:ConnectionString")
+        ?? builder.Configuration["MongoDBSettings:ConnectionString"];
 
     return new MongoClient(connectionString);
 });
@@ -30,6 +32,7 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
     var dbName = builder.Configuration["MongoDBSettings:DatabaseName"] ?? "Karpatyyy";
+
     return client.GetDatabase(dbName);
 });
 
@@ -43,11 +46,12 @@ builder.Services.AddScoped<ITipService, TipService>();
 builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 
-// --- 3. Контролери, JSON, формат помилок валідації ---
+// --- 3. Контролери та JSON ---
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter());
     });
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
@@ -79,7 +83,8 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("feedback", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey:
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = feedbackPerMinute,
@@ -135,18 +140,32 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// --- 6. Початкові дані ---
+// --- 6. Глобальна обробка помилок ---
+app.UseMiddleware<Karpaty.Api.Middleware.GlobalExceptionMiddleware>();
+
+// --- 7. Створення індексів MongoDB ---
+using (var scope = app.Services.CreateScope())
+{
+    var placeRepository = scope.ServiceProvider
+        .GetRequiredService<IPlaceRepository>();
+
+    if (placeRepository is PlaceRepository concreteRepository)
+    {
+        await concreteRepository.CreateIndexesAsync();
+    }
+}
+
+// --- 8. Початкові дані ---
 await DBSeeder.SeedPlacesAsync(app.Services);
 await DBSeeder.SeedTipsAsync(app.Services);
 
-// --- 7. Middleware ---
+// --- 9. Middleware ---
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseCors();
 app.UseRateLimiter();
 
-// Статика (фронтенд)
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
