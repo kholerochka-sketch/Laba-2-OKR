@@ -99,6 +99,73 @@ public async Task CreatePlaceAsync_CreatesPlace()
                 Times.Once
             );
         }
+                [Fact]
+        public async Task CreatePlaceAsync_ThrowsExceptionWhenPlaceAlreadyExists()
+        {
+            var dto = new CreatePlaceDTO
+            {
+                name = "Existing place",
+                description = "New description",
+                imageUrl = "new.jpg"
+            };
+
+            var existingPlaces = new List<Place>
+            {
+                new Place
+                {
+                    id = "1",
+                    name = "Existing place"
+                }
+            };
+
+            _repositoryMock
+                .Setup(r => r.GetAllAsync())
+                .ReturnsAsync(existingPlaces);
+
+            var exception = await Assert.ThrowsAsync<ArgumentException>(
+                () => _service.CreatePlaceAsync(dto)
+            );
+
+            Assert.Contains("Existing place", exception.Message);
+
+            _repositoryMock.Verify(
+                r => r.CreateAsync(It.IsAny<Place>()),
+                Times.Never
+            );
+        }
+
+        [Fact]
+        public async Task CreatePlaceAsync_ThrowsExceptionWhenPlaceExistsIgnoringCase()
+        {
+            var dto = new CreatePlaceDTO
+            {
+                name = "EXISTING PLACE",
+                description = "New description",
+                imageUrl = "new.jpg"
+            };
+
+            var existingPlaces = new List<Place>
+            {
+                new Place
+                {
+                    id = "1",
+                    name = "Existing place"
+                }
+            };
+
+            _repositoryMock
+                .Setup(r => r.GetAllAsync())
+                .ReturnsAsync(existingPlaces);
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => _service.CreatePlaceAsync(dto)
+            );
+
+            _repositoryMock.Verify(
+                r => r.CreateAsync(It.IsAny<Place>()),
+                Times.Never
+            );
+        }
 
                 [Fact]
         public async Task UpdatePlaceAsync_UpdatesExistingPlace()
