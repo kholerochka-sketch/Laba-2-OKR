@@ -31,6 +31,37 @@ public class PlacesController : ControllerBase
     /// <summary>
     /// Отримати список усіх місць або відфільтрувати за категорією (waterfall, viewpoint, meadow).
     /// </summary>
+    /// <remarks>
+    /// Приклад запиту з фільтрацією:
+    ///
+    ///     GET /api/places?category=waterfall
+    ///
+    /// Приклад відповіді (200 OK):
+    ///
+    ///     [
+    ///        {
+    ///           "id": "65f1a2b3c4d5e6f7a8b9c0d1",
+    ///           "name": "Водоспад Шипіт",
+    ///           "category": "waterfall",
+    ///           "region": "Закарпатська область",
+    ///           "description": "Один із наймальовничіших водоспадів Карпат.",
+    ///           "difficulty": "easy",
+    ///           "latitude": 48.6558,
+    ///           "longitude": 23.2694,
+    ///           "imageUrl": "https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=800"
+    ///        }
+    ///     ]
+    ///
+    /// Приклад відповіді при невідомій категорії (400 Bad Request):
+    ///
+    ///     {
+    ///        "status": 400,
+    ///        "error": "Невідома категорія. Дозволені значення: waterfall, viewpoint, meadow"
+    ///     }
+    /// </remarks>
+    /// <param name="category">Необов'язковий фільтр категорії: <c>waterfall</c>, <c>viewpoint</c> або <c>meadow</c>.</param>
+    /// <response code="200">Список туристичних місць успішно отримано.</response>
+    /// <response code="400">Передано невідоме значення параметра category.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<Place>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -42,12 +73,12 @@ public class PlacesController : ControllerBase
             return Ok(places);
 
         var categoryMap = new Dictionary<string, PlaceCategory>(
-    StringComparer.OrdinalIgnoreCase)
-{
-    ["waterfall"] = PlaceCategory.waterfall,
-    ["viewpoint"] = PlaceCategory.viewpoint,
-    ["meadow"] = PlaceCategory.meadow
-};
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["waterfall"] = PlaceCategory.waterfall,
+            ["viewpoint"] = PlaceCategory.viewpoint,
+            ["meadow"] = PlaceCategory.meadow
+        };
 
         if (!categoryMap.TryGetValue(category, out var selectedCategory))
         {
@@ -68,6 +99,21 @@ public class PlacesController : ControllerBase
     /// <summary>
     /// Отримати деталі одного місця за його ID.
     /// </summary>
+    /// <remarks>
+    /// Приклад запиту:
+    ///
+    ///     GET /api/places/65f1a2b3c4d5e6f7a8b9c0d1
+    ///
+    /// Приклад відповіді, якщо місце не знайдено (404 Not Found):
+    ///
+    ///     {
+    ///        "status": 404,
+    ///        "error": "Місце не знайдено"
+    ///     }
+    /// </remarks>
+    /// <param name="id">Унікальний ідентифікатор місця (24-символьний ObjectId MongoDB).</param>
+    /// <response code="200">Повертає об'єкт знайденого туристичного місця.</response>
+    /// <response code="404">Місце з вказаним ID не знайдено або формат ID некоректний.</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Place), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -92,6 +138,24 @@ public class PlacesController : ControllerBase
     /// <summary>
     /// Додати нове місце.
     /// </summary>
+    /// <remarks>
+    /// Приклад запиту:
+    ///
+    ///     POST /api/places
+    ///     {
+    ///        "name": "Озеро Несамовите",
+    ///        "category": "viewpoint",
+    ///        "region": "Івано-Франківська область",
+    ///        "description": "Високогірне озеро льодовикового походження на Чорногорі.",
+    ///        "difficulty": "medium",
+    ///        "latitude": 48.1225,
+    ///        "longitude": 24.5394,
+    ///        "imageUrl": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800"
+    ///     }
+    /// </remarks>
+    /// <param name="dto">Дані для створення нового туристичного місця.</param>
+    /// <response code="201">Місце успішно створено, повертає створений об'єкт.</response>
+    /// <response code="400">Помилка валідації (некоректна категорія, складність або інші поля).</response>
     [HttpPost]
     [ProducesResponseType(typeof(Place), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -121,6 +185,20 @@ public class PlacesController : ControllerBase
     /// <summary>
     /// Оновити місце за ID.
     /// </summary>
+    /// <remarks>
+    /// Приклад запиту:
+    ///
+    ///     PUT /api/places/65f1a2b3c4d5e6f7a8b9c0d1
+    ///     {
+    ///        "description": "Оновлений детальний опис маршруту до локації.",
+    ///        "imageUrl": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800"
+    ///     }
+    /// </remarks>
+    /// <param name="id">Ідентифікатор місця, яке потрібно оновити.</param>
+    /// <param name="dto">Оновлені дані місця (опис та посилання на зображення).</param>
+    /// <response code="204">Місце успішно оновлено.</response>
+    /// <response code="400">Некоректні дані у тілі запиту.</response>
+    /// <response code="404">Місце з таким ID не знайдено.</response>
     [HttpPut("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -151,6 +229,20 @@ public class PlacesController : ControllerBase
     /// <summary>
     /// Частково оновити місце за ID.
     /// </summary>
+    /// <remarks>
+    /// Приклад запиту:
+    ///
+    ///     PATCH /api/places/65f1a2b3c4d5e6f7a8b9c0d1
+    ///     {
+    ///        "description": "Новий короткий опис локації.",
+    ///        "imageUrl": "https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=800"
+    ///     }
+    /// </remarks>
+    /// <param name="id">Ідентифікатор місця.</param>
+    /// <param name="dto">Поля місця для оновлення.</param>
+    /// <response code="204">Місце успішно оновлено.</response>
+    /// <response code="400">Некоректні вхідні дані.</response>
+    /// <response code="404">Місце з таким ID не знайдено.</response>
     [HttpPatch("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -181,6 +273,14 @@ public class PlacesController : ControllerBase
     /// <summary>
     /// Видалити місце за ID.
     /// </summary>
+    /// <remarks>
+    /// Приклад запиту:
+    ///
+    ///     DELETE /api/places/65f1a2b3c4d5e6f7a8b9c0d1
+    /// </remarks>
+    /// <param name="id">Ідентифікатор місця для видалення.</param>
+    /// <response code="204">Місце успішно видалено.</response>
+    /// <response code="404">Місце з таким ID не знайдено.</response>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -71,7 +71,6 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 // --- 4. Обмеження частоти запитів (захист від спаму) ---
-// За замовчуванням 3 запити на хвилину з однієї IP-адреси на POST /api/feedback.
 var feedbackPerMinute = builder.Configuration.GetValue("RateLimiting:FeedbackPerMinute", 3);
 
 builder.Services.AddRateLimiter(options =>
@@ -120,9 +119,13 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    // Підтягує XML-коментарі (summary, remarks, response) у Swagger UI
+    // Підтягує XML-коментарі (summary, remarks, param, response) у Swagger UI
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
 });
 
 var app = builder.Build();
