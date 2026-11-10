@@ -30,48 +30,56 @@
         <!-- АДМІН-ПАНЕЛЬ -->
         <section class="section admin-card" id="admin-section">
             <h2>🔐 Адмін-панель (Керування місцями)</h2>
-            <p class="admin-subtitle">Введіть адмін-ключ, щоб отримати можливість додавати та видаляти місця.</p>
+            <p class="admin-subtitle">Керуйте додаванням та видаленням туристичних місць за допомогою адмін-ключа.</p>
 
-            <div class="admin-key-group">
-                <input type="password" id="admin-key-input" placeholder="Введіть адмін-ключ" aria-label="Адмін ключ">
+            <!-- Кнопка входу в адмінку -->
+            <div id="admin-login-box">
+                <button type="button" class="btn btn-admin" id="open-admin-btn">Увійти в адмін-панель 🔑</button>
             </div>
 
-            <h3>Додати нове місце</h3>
-            <form id="add-place-form" class="admin-form">
-                <input type="text" id="place-name" placeholder="Назва місця" required>
-
-                <select id="place-category" required>
-                    <option value="" disabled selected>Оберіть категорію</option>
-                    <option value="waterfall">Водоспад</option>
-                    <option value="viewpoint">Оглядовий майданчик</option>
-                    <option value="meadow">Полонина</option>
-                </select>
-
-                <select id="place-region" required>
-                    <option value="" disabled selected>Оберіть регіон</option>
-                    <option value="Східні_Карпати">Східні Карпати</option>
-                    <option value="Західні_Карпати">Західні Карпати</option>
-                    <option value="Південні_Карпати">Південні Карпати</option>
-                </select>
-
-                <textarea id="place-desc" placeholder="Опис місця..." rows="3" required></textarea>
-
-                <select id="place-difficulty" required>
-                    <option value="" disabled selected>Оберіть складність маршруту</option>
-                    <option value="easy">Легкий</option>
-                    <option value="medium">Середній</option>
-                    <option value="hard">Важкий</option>
-                </select>
-
-                <div class="coords-row">
-                    <input type="number" step="any" id="place-lat" placeholder="Широта (наприклад, 48.16)" required>
-                    <input type="number" step="any" id="place-lng" placeholder="Довгота (наприклад, 24.50)" required>
+            <!-- Форма додавання та керування (прихована до введення ключа) -->
+            <div id="admin-panel-content" style="display: none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: var(--primary);">Додати нове місце</h3>
+                    <button type="button" class="btn" id="logout-admin-btn" style="background: #e63946; color: white; padding: 6px 12px; font-size: 13px; border: none; border-radius: 8px; cursor: pointer;">Вийти з адмінки 🚪</button>
                 </div>
 
-                <input type="url" id="place-image" placeholder="Посилання на зображення (необов'язково)">
+                <form id="add-place-form" class="admin-form">
+                    <input type="text" id="place-name" placeholder="Назва місця" required>
 
-                <button type="submit" class="btn btn-admin">Додати місце в базу ➕</button>
-            </form>
+                    <select id="place-category" required>
+                        <option value="" disabled selected>Оберіть категорію</option>
+                        <option value="waterfall">Водоспад</option>
+                        <option value="viewpoint">Оглядовий майданчик</option>
+                        <option value="meadow">Полонина</option>
+                    </select>
+
+                    <select id="place-region" required>
+                        <option value="" disabled selected>Оберіть регіон</option>
+                        <option value="Східні_Карпати">Східні Карпати</option>
+                        <option value="Західні_Карпати">Західні Карпати</option>
+                        <option value="Південні_Карпати">Південні Карпати</option>
+                    </select>
+
+                    <textarea id="place-desc" placeholder="Опис місця..." rows="3" required></textarea>
+
+                    <select id="place-difficulty" required>
+                        <option value="" disabled selected>Оберіть складність маршруту</option>
+                        <option value="easy">Легкий</option>
+                        <option value="medium">Середній</option>
+                        <option value="hard">Важкий</option>
+                    </select>
+
+                    <div class="coords-row">
+                        <input type="number" step="any" id="place-lat" placeholder="Широта (наприклад, 48.16)" required>
+                        <input type="number" step="any" id="place-lng" placeholder="Довгота (наприклад, 24.50)" required>
+                    </div>
+
+                    <input type="url" id="place-image" placeholder="Посилання на зображення (необов'язково)">
+
+                    <button type="submit" class="btn btn-admin">Додати місце в базу ➕</button>
+                </form>
+            </div>
         </section>
 
         <!-- Секція Цікаві місця -->

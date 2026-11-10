@@ -1,5 +1,6 @@
 const API_URL = "/api";
 let allPlacesData = [];
+let currentAdminKey = ""; // Змінна для зберігання адмін-ключа після входу
 
 document.addEventListener('DOMContentLoaded', () => {
     checkHealth();
@@ -45,14 +46,12 @@ async function checkHealth() {
 
 // Залізобетонна функція для різних та унікальних картинок
 function getPlaceImage(place) {
-    // Якщо користувач ввів справжнє посилання через адмінку — беремо його
     if (place.imageUrl && typeof place.imageUrl === 'string' && place.imageUrl.trim() !== "" && place.imageUrl.startsWith('http')) {
         return place.imageUrl.trim();
     }
 
     const nameLower = (place.name || "").toLowerCase();
 
-    // Унікальні фото під конкретні місця з високою стабільністю завантаження
     if (nameLower.includes('довбуш')) {
         return 'https://images.unsplash.com/photo-1599813233827-0ffb8214f475?auto=format&fit=crop&w=600&q=80';
     } else if (nameLower.includes('піп іван') || nameLower.includes('піпіван') || nameLower.includes('чорног')) {
@@ -73,7 +72,6 @@ function getPlaceImage(place) {
         return 'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=600&q=80';
     }
 
-    // Якщо назва не розпізнана, підбираємо унікальну картинку за хешем назви (щоб кожне нове місце мало гарантовано свою унікальну фотографію, а не однакову!)
     const collectionPool = [
         'https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?auto=format&fit=crop&w=600&q=80',
         'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=80',
@@ -123,8 +121,6 @@ async function loadPlaces(category = '') {
             return;
         }
 
-        const adminKey = document.getElementById('admin-key-input')?.value || '';
-
         placesList.innerHTML = places.map(p => {
             const placeId = p.id || p._id;
             const safeName = escapeHtml(p.name);
@@ -146,7 +142,7 @@ async function loadPlaces(category = '') {
                     <p class="desc-info">${safeDesc}</p>
                     <div class="card-footer">
                         <button class="details-btn" onclick="openModalById('${placeId}')">Детальніше</button>
-                        ${adminKey ? `<button class="delete-btn" onclick="deletePlace('${placeId}')" title="Видалити">🗑️</button>` : ''}
+                        ${currentAdminKey ? `<button class="delete-btn" onclick="deletePlace('${placeId}')" title="Видалити">🗑️</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -344,11 +340,33 @@ function setupReviewForm() {
 }
 
 function setupAdminPanel() {
+    const openBtn = document.getElementById('open-admin-btn');
+    const logoutBtn = document.getElementById('logout-admin-btn');
+    const loginBox = document.getElementById('admin-login-box');
+    const panelContent = document.getElementById('admin-panel-content');
     const form = document.getElementById('add-place-form');
-    const adminKeyInput = document.getElementById('admin-key-input');
 
-    if (adminKeyInput) {
-        adminKeyInput.addEventListener('input', () => {
+    if (openBtn) {
+        openBtn.addEventListener('click', () => {
+            const key = prompt("Введіть адмін-ключ доступу:");
+            if (!key) return;
+
+            currentAdminKey = key.trim();
+
+            // Ховаємо кнопку входу, показуємо панель керування
+            loginBox.style.display = 'none';
+            panelContent.style.display = 'block';
+
+            // Перезавантажуємо список місць, щоб з'явилися кнопки видалення
+            loadPlaces();
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            currentAdminKey = "";
+            panelContent.style.display = 'none';
+            loginBox.style.display = 'block';
             loadPlaces();
         });
     }
@@ -358,9 +376,8 @@ function setupAdminPanel() {
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
-        const adminKey = adminKeyInput ? adminKeyInput.value.trim() : '';
-        if (!adminKey) {
-            alert('Будь ласка, введіть адмін-ключ вище!');
+        if (!currentAdminKey) {
+            alert('Будь ласка, увійдіть в адмін-панель за допомогою ключа!');
             return;
         }
 
@@ -380,7 +397,7 @@ function setupAdminPanel() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Admin-Key': adminKey
+                    'X-Admin-Key': currentAdminKey
                 },
                 body: JSON.stringify(newPlace)
             });
@@ -391,6 +408,9 @@ function setupAdminPanel() {
                 alert('Місце успішно додано через адмін-панель! 🎉');
             } else if (response.status === 401) {
                 alert('Неправильний адмін-ключ!');
+                currentAdminKey = "";
+                panelContent.style.display = 'none';
+                loginBox.style.display = 'block';
             } else {
                 const errData = await response.json().catch(() => ({}));
                 alert(errData.error || 'Помилка при додаванні місця.');
@@ -403,9 +423,8 @@ function setupAdminPanel() {
 }
 
 window.deletePlace = async function (id) {
-    const adminKey = document.getElementById('admin-key-input')?.value.trim() || '';
-    if (!adminKey) {
-        alert('Введіть адмін-ключ у полі зверху!');
+    if (!currentAdminKey) {
+        alert('Ви не авторизовані як адміністратор!');
         return;
     }
 
@@ -415,7 +434,7 @@ window.deletePlace = async function (id) {
         const response = await fetch(`/api/places/${id}`, {
             method: 'DELETE',
             headers: {
-                'X-Admin-Key': adminKey
+                'X-Admin-Key': currentAdminKey
             }
         });
 
@@ -423,7 +442,11 @@ window.deletePlace = async function (id) {
             loadPlaces();
             alert('Місце успішно видалено!');
         } else if (response.status === 401) {
-            alert('Неправильний адмін-ключ!');
+            alert('Неправильний адмін-ключ або сесія закінчилась!');
+            currentAdminKey = "";
+            document.getElementById('admin-panel-content').style.display = 'none';
+            document.getElementById('admin-login-box').style.display = 'block';
+            loadPlaces();
         } else {
             alert('Не вдалося видалити місце.');
         }
