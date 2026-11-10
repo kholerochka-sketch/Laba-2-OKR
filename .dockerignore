@@ -1,0 +1,6 @@
+**/.git
+**/.vs
+**/.vscode
+**/bin
+**/obj
+src/Karpaty.Api/appsettings.Development.json
