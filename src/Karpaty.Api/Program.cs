@@ -15,14 +15,15 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. Налаштування бази даних MongoDB ---
+// --- 1. Налаштування MongoDB ---
 builder.Services.Configure<MongoDBSettings>(
     builder.Configuration.GetSection("MongoDBSettings"));
 
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("MongoDBSettings:ConnectionString")
-                           ?? builder.Configuration["MongoDBSettings:ConnectionString"];
+    var connectionString =
+        builder.Configuration.GetConnectionString("MongoDBSettings:ConnectionString")
+        ?? builder.Configuration["MongoDBSettings:ConnectionString"];
 
     return new MongoClient(connectionString);
 });
@@ -31,6 +32,7 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
     var dbName = builder.Configuration["MongoDBSettings:DatabaseName"] ?? "Karpatyyy";
+
     return client.GetDatabase(dbName);
 });
 
@@ -44,22 +46,23 @@ builder.Services.AddScoped<ITipService, TipService>();
 builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 
-// --- 3. Контролери, JSON, формат помилок валідації ---
+// --- 3. Контролери та JSON ---
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // enum передається рядками (waterfall, easy ...), а не числами
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter());
     });
 
-// Невалідні дані -> 400 у форматі контракту { "status": 400, "error": "текст" }
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState.Values
             .SelectMany(v => v.Errors)
-            .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Некоректні дані запиту" : e.ErrorMessage)
+            .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage)
+                ? "Некоректні дані запиту"
+                : e.ErrorMessage)
             .Distinct();
 
         return new BadRequestObjectResult(new
@@ -79,7 +82,8 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("feedback", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey:
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = feedbackPerMinute,
@@ -90,18 +94,24 @@ builder.Services.AddRateLimiter(options =>
 
     options.OnRejected = async (context, cancellationToken) =>
     {
-        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        if (context.Lease.TryGetMetadata(
+                MetadataName.RetryAfter,
+                out var retryAfter))
         {
             context.HttpContext.Response.Headers["Retry-After"] =
                 ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
         }
 
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsJsonAsync(new
-        {
-            status = 429,
-            error = "Забагато запитів. Спробуйте ще раз через хвилину."
-        }, cancellationToken);
+        context.HttpContext.Response.StatusCode =
+            StatusCodes.Status429TooManyRequests;
+
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new
+            {
+                status = 429,
+                error = "Забагато запитів. Спробуйте ще раз через хвилину."
+            },
+            cancellationToken);
     };
 });
 
@@ -117,6 +127,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
     // Підтягує XML-коментарі (summary, remarks, param, response) у Swagger UI
@@ -130,7 +141,22 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// --- 6. Початкові дані ---
+// --- 6. Глобальна обробка помилок ---
+app.UseMiddleware<Karpaty.Api.Middleware.GlobalExceptionMiddleware>();
+
+// --- 7. Створення індексів MongoDB ---
+using (var scope = app.Services.CreateScope())
+{
+    var placeRepository = scope.ServiceProvider
+        .GetRequiredService<IPlaceRepository>();
+
+    if (placeRepository is PlaceRepository concreteRepository)
+    {
+        await concreteRepository.CreateIndexesAsync();
+    }
+}
+
+// --- 8. Початкові дані ---
 await DBSeeder.SeedPlacesAsync(app.Services);
 await DBSeeder.SeedTipsAsync(app.Services);
 
@@ -143,15 +169,18 @@ app.UseSwaggerUI();
 app.UseCors();
 app.UseRateLimiter();
 
-// Статика (фронтенд)
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapControllers();
 
-// Невідомі маршрути API -> JSON 404, а не index.html
+// Невідомі маршрути API -> JSON 404
 app.Map("/api/{**slug}", () => Results.Json(
-    new { status = 404, error = "Маршрут API не знайдено" },
+    new
+    {
+        status = 404,
+        error = "Маршрут API не знайдено"
+    },
     statusCode: StatusCodes.Status404NotFound));
 
 // Усе інше - сторінка фронтенду

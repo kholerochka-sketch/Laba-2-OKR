@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -88,7 +89,6 @@
             <div id="places-list" class="cards-grid">
                 <p class="placeholder">Дані завантажуються...</p>
             </div>
-        </section>
 
         <!-- СЕКЦІЯ ПОРАД -->
         <section class="section" id="tips-section">
@@ -96,13 +96,11 @@
             <div id="tips-list" class="cards-grid">
                 <p class="placeholder">Завантаження порад...</p>
             </div>
-        </section>
 
         <!-- СЕКЦІЯ ВІДГУКІВ -->
         <section class="section" id="reviews-section">
             <h2>Відгуки відвідувачів</h2>
             <div id="reviews-container">
-                <p style="color: #666;">Завантаження відгуків...</p>
             </div>
         </section>
 
@@ -136,12 +134,72 @@
         </div>
     </main>
 
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 Karpaty Guide — Командний проєкт</p>
+    <!-- Модальне вікно місця -->
+    <div id="place-modal" class="modal">
+        <div class="modal-content">
+
+            <button
+                type="button"
+                class="close-btn"
+                aria-label="Закрити"
+            >
+                &times;
+            </button>
+
+
+            <h3>Залишити відгук</h3>
+
+
+                <label for="reviewer-name">Ваше ім'я:</label>
+                <input
+                    type="text"
+                    id="reviewer-name"
+                    required
+                >
+
+                <label for="reviewer-email">Email:</label>
+                <input
+                    type="email"
+                    id="reviewer-email"
+                    required
+                >
+
+                <label for="review-rating">Оцінка:</label>
+                <select id="review-rating" required>
+                    <option value="5">5 — Відмінно</option>
+                    <option value="4">4 — Добре</option>
+                    <option value="3">3 — Нормально</option>
+                    <option value="2">2 — Погано</option>
+                    <option value="1">1 — Дуже погано</option>
+                </select>
+
+                <label for="review-text">Ваш відгук:</label>
+                <textarea
+                    id="review-text"
+                    required
+                    placeholder="Поділіться враженнями..."
+                ></textarea>
+
+                <button type="submit">Надіслати відгук</button>
+            </form>
+
         </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Карпати без натовпу</p>
     </footer>
 
     <script src="script.js"></script>
 </body>
 </html>
+            <form id="review-form">
+            <div id="modalDetails"></div>
+                id="close-modal"
+                Завантаження відгуків...
+        </section>
+            <h2>Поради туристам</h2>
+        </section>
+
+                </button>
+
