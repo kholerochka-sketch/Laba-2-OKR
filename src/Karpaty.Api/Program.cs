@@ -1,10 +1,8 @@
-using System.Reflection;
-using System.Text.Json.Serialization;
-using System.Threading.RateLimiting;
 using Karpaty.Api.DBCommunication;
-using Karpaty.Api.DBCommunication.Repositories;
 using Karpaty.Api.DBCommunication.Reposetories;
+using Karpaty.Api.DBCommunication.Repositories;
 using Karpaty.Api.DBCommunication.Repositories.Interfaces;
+using Karpaty.Api.Middlewares.Karpaty.Api.Middlewares;
 using Karpaty.Api.Seeder;
 using Karpaty.Api.Services;
 using Karpaty.Api.Services.Interfaces;
@@ -12,17 +10,21 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 using MongoDB.Driver;
+using System.Reflection;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. Налаштування бази даних MongoDB ---
+// --- 1. Налаштування MongoDB ---
 builder.Services.Configure<MongoDBSettings>(
     builder.Configuration.GetSection("MongoDBSettings"));
 
 builder.Services.AddSingleton<IMongoClient>(serviceProvider =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("MongoDBSettings:ConnectionString")
-                           ?? builder.Configuration["MongoDBSettings:ConnectionString"];
+    var connectionString =
+        builder.Configuration.GetConnectionString("MongoDBSettings:ConnectionString")
+        ?? builder.Configuration["MongoDBSettings:ConnectionString"];
 
     return new MongoClient(connectionString);
 });
@@ -31,6 +33,7 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
     var dbName = builder.Configuration["MongoDBSettings:DatabaseName"] ?? "Karpatyyy";
+
     return client.GetDatabase(dbName);
 });
 
@@ -44,11 +47,12 @@ builder.Services.AddScoped<ITipService, TipService>();
 builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 
-// --- 3. Контролери, JSON, формат помилок валідації ---
+// --- 3. Контролери та JSON ---
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter());
     });
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
@@ -80,7 +84,8 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("feedback", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey:
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = feedbackPerMinute,
@@ -178,14 +183,15 @@ catch (Exception ex)
     app.Logger.LogError(ex, "Не вдалося заповнити базу початковими даними");
 }
 
-// --- 7. Middleware ---
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// --- 7. Middleware (порядок важливий) ---
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseCors();
 app.UseRateLimiter();
 
-// Статика (фронтенд)
 app.UseDefaultFiles();
 app.UseStaticFiles();
 

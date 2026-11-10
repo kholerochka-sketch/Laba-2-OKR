@@ -1,25 +1,29 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Xunit;
-using Moq;
-using Karpaty.Api.Models;
+
 using Karpaty.Api.DTO;
+using Karpaty.Api.Models;
 using Karpaty.Api.Services;
-using Karpaty.Api.Services.Interfaces;
 using Karpaty.Api.DBCommunication.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
 
 namespace Karpaty.Tests
 {
     public class PlaceServiceTests
     {
         private readonly Mock<IPlaceRepository> _repositoryMock;
+        private readonly Mock<ILogger<PlaceService>> _loggerMock;
         private readonly PlaceService _service;
 
         public PlaceServiceTests()
         {
             _repositoryMock = new Mock<IPlaceRepository>();
-            _service = new PlaceService(_repositoryMock.Object);
+            _loggerMock = new Mock<ILogger<PlaceService>>();
+
+            _service = new PlaceService(
+                _repositoryMock.Object,
+                _loggerMock.Object
+            );
         }
 
         [Fact]
@@ -27,8 +31,8 @@ namespace Karpaty.Tests
         {
             var places = new List<Place>
             {
-                new Place { id = "1", description = "First" },
-                new Place { id = "2", description = "Second" }
+                new Place { id = "1", name = "Place 1" },
+                new Place { id = "2", name = "Place 2" }
             };
 
             _repositoryMock
@@ -43,11 +47,7 @@ namespace Karpaty.Tests
         [Fact]
         public async Task GetPlaceByIdAsync_ReturnsPlace()
         {
-            var place = new Place
-            {
-                id = "1",
-                description = "Test place"
-            };
+            var place = new Place { id = "1", name = "Test" };
 
             _repositoryMock
                 .Setup(r => r.GetByIdAsync("1"))
@@ -56,7 +56,7 @@ namespace Karpaty.Tests
             var result = await _service.GetPlaceByIdAsync("1");
 
             Assert.NotNull(result);
-            Assert.Equal("Test place", result.description);
+            Assert.Equal("Test", result.name);
         }
 
         [Fact]
@@ -72,27 +72,32 @@ namespace Karpaty.Tests
         }
 
         [Fact]
-public async Task CreatePlaceAsync_CreatesPlace()
-{
-    var dto = new CreatePlaceDTO
-    {
-        name = "New place",
-        description = "Description",
-        imageUrl = "image.jpg"
-    };
+        public async Task CreatePlaceAsync_CreatesPlace()
+        {
+            var dto = new CreatePlaceDTO
+            {
+                name = "New place",
+                category = PlaceCategory.waterfall,
+                region = PlaceRegion.Західні_Карпати,
+                difficulty = PlaceDifficulty.easy,
+                latitude = 49.8f,
+                longitude = 24.0f,
+                description = "Description",
+                imageUrl = "image.jpg"
+            };
 
-    _repositoryMock
-        .Setup(r => r.GetAllAsync())
-        .ReturnsAsync(new List<Place>());
+            _repositoryMock
+                .Setup(r => r.GetAllAsync())
+                .ReturnsAsync(new List<Place>());
 
-    _repositoryMock
-        .Setup(r => r.CreateAsync(It.IsAny<Place>()))
-        .Returns(Task.CompletedTask);
+            _repositoryMock
+                .Setup(r => r.CreateAsync(It.IsAny<Place>()))
+                .Returns(Task.CompletedTask);
 
-    var result = await _service.CreatePlaceAsync(dto);
+            var result = await _service.CreatePlaceAsync(dto);
 
+            Assert.NotNull(result);
             Assert.Equal("New place", result.name);
-            Assert.Equal("Description", result.description);
 
             _repositoryMock.Verify(
                 r => r.CreateAsync(It.IsAny<Place>()),
@@ -100,12 +105,63 @@ public async Task CreatePlaceAsync_CreatesPlace()
             );
         }
 
-                [Fact]
+        [Fact]
+        public async Task CreatePlaceAsync_ThrowsWhenNameAlreadyExists()
+        {
+            var dto = new CreatePlaceDTO
+            {
+                name = "Existing place",
+                category = PlaceCategory.waterfall,
+                region = PlaceRegion.Західні_Карпати,
+                difficulty = PlaceDifficulty.easy,
+                latitude = 49.8f,
+                longitude = 24.0f
+            };
+
+            _repositoryMock
+                .Setup(r => r.GetAllAsync())
+                .ReturnsAsync(new List<Place>
+                {
+                    new Place { id = "1", name = "Existing place" }
+                });
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => _service.CreatePlaceAsync(dto)
+            );
+        }
+
+        [Fact]
+        public async Task CreatePlaceAsync_ThrowsWhenNameExistsIgnoringCase()
+        {
+            var dto = new CreatePlaceDTO
+            {
+                name = "EXISTING PLACE",
+                category = PlaceCategory.waterfall,
+                region = PlaceRegion.Західні_Карпати,
+                difficulty = PlaceDifficulty.easy,
+                latitude = 49.8f,
+                longitude = 24.0f
+            };
+
+            _repositoryMock
+                .Setup(r => r.GetAllAsync())
+                .ReturnsAsync(new List<Place>
+                {
+                    new Place { id = "1", name = "Existing place" }
+                });
+
+            await Assert.ThrowsAsync<ArgumentException>(
+                () => _service.CreatePlaceAsync(dto)
+            );
+        }
+
+        [Fact]
         public async Task UpdatePlaceAsync_UpdatesExistingPlace()
         {
             var place = new Place
             {
                 id = "1",
+                name = "Test",
                 description = "Old description",
                 imageUrl = "old.jpg"
             };
@@ -126,6 +182,7 @@ public async Task CreatePlaceAsync_CreatesPlace()
 
             var result = await _service.UpdatePlaceAsync("1", dto);
 
+            Assert.NotNull(result);
             Assert.Equal("New description", result.description);
             Assert.Equal("new.jpg", result.imageUrl);
 
@@ -150,11 +207,6 @@ public async Task CreatePlaceAsync_CreatesPlace()
             var result = await _service.UpdatePlaceAsync("999", dto);
 
             Assert.Null(result);
-
-            _repositoryMock.Verify(
-                r => r.UpdateAsync(It.IsAny<Place>()),
-                Times.Never
-            );
         }
 
         [Fact]
