@@ -1,4 +1,7 @@
-﻿using Karpaty.Api.Models;
+
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Karpaty.Api.Models;
 
 namespace Karpaty.Api.DBCommunication.Repositories.Interfaces
 {
@@ -10,5 +13,6 @@ namespace Karpaty.Api.DBCommunication.Repositories.Interfaces
         Task UpdateAsync(Place place);
         Task DeleteAsync(string id);
         Task<List<Place>> GetByCategoryAsync(PlaceCategory category);
+        Task<bool> ExistsByNameAsync(string name);
     }
 }

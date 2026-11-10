@@ -6,6 +6,7 @@ using Karpaty.Api.DBCommunication.Repositories.Interfaces;
 using Karpaty.Api.DTO;
 using Karpaty.Api.Models;
 using Karpaty.Api.Services;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -19,13 +20,18 @@ public class TipServiceTests
     public TipServiceTests()
     {
         _repositoryMock = new Mock<ITipRepository>();
-        _service = new TipService(_repositoryMock.Object);
+
+        var loggerMock = new Mock<ILogger<TipService>>();
+
+        _service = new TipService(
+            _repositoryMock.Object,
+            loggerMock.Object
+        );
     }
 
     [Fact]
     public async Task GetAllTipsAsync_ReturnsAllTips()
     {
-        // Arrange
         var tips = new List<Tip>
         {
             new Tip { id = "1", title = "Tip 1", category = "travel", text = "Text 1" },
@@ -36,10 +42,8 @@ public class TipServiceTests
             .Setup(r => r.GetAllAsync())
             .ReturnsAsync(tips);
 
-        // Act
         var result = await _service.GetAllTipsAsync();
 
-        // Assert
         Assert.Equal(2, result.Count());
         _repositoryMock.Verify(r => r.GetAllAsync(), Times.Once);
     }
@@ -47,7 +51,6 @@ public class TipServiceTests
     [Fact]
     public async Task GetTipByIdAsync_WhenTipExists_ReturnsTip()
     {
-        // Arrange
         var tip = new Tip
         {
             id = "1",
@@ -60,10 +63,8 @@ public class TipServiceTests
             .Setup(r => r.GetByIdAsync("1"))
             .ReturnsAsync(tip);
 
-        // Act
         var result = await _service.GetTipByIdAsync("1");
 
-        // Assert
         Assert.NotNull(result);
         Assert.Equal("Travel tip", result.title);
         _repositoryMock.Verify(r => r.GetByIdAsync("1"), Times.Once);
@@ -72,22 +73,18 @@ public class TipServiceTests
     [Fact]
     public async Task GetTipByIdAsync_WhenTipDoesNotExist_ReturnsNull()
     {
-        // Arrange
         _repositoryMock
             .Setup(r => r.GetByIdAsync("999"))
             .ReturnsAsync((Tip?)null);
 
-        // Act
         var result = await _service.GetTipByIdAsync("999");
 
-        // Assert
         Assert.Null(result);
     }
 
     [Fact]
     public async Task CreateTipAsync_TrimsAndNormalizesFields()
     {
-        // Arrange
         var dto = new CreateTipDTO
         {
             title = "  Travel advice  ",
@@ -102,10 +99,8 @@ public class TipServiceTests
             .Callback<Tip>(tip => createdTip = tip)
             .Returns(Task.CompletedTask);
 
-        // Act
         var result = await _service.CreateTipAsync(dto);
 
-        // Assert
         Assert.Equal("Travel advice", result.title);
         Assert.Equal("travel", result.category);
         Assert.Equal("Be careful", result.text);
@@ -121,7 +116,6 @@ public class TipServiceTests
     [Fact]
     public async Task UpdateTipAsync_WhenTipExists_UpdatesFields()
     {
-        // Arrange
         var existingTip = new Tip
         {
             id = "1",
@@ -145,10 +139,8 @@ public class TipServiceTests
             .Setup(r => r.UpdateAsync(It.IsAny<Tip>()))
             .Returns(Task.CompletedTask);
 
-        // Act
         var result = await _service.UpdateTipAsync("1", dto);
 
-        // Assert
         Assert.NotNull(result);
         Assert.Equal("New title", result.title);
         Assert.Equal("safety", result.category);
@@ -162,7 +154,6 @@ public class TipServiceTests
     [Fact]
     public async Task UpdateTipAsync_WhenTipDoesNotExist_ReturnsNull()
     {
-        // Arrange
         _repositoryMock
             .Setup(r => r.GetByIdAsync("999"))
             .ReturnsAsync((Tip?)null);
@@ -172,10 +163,8 @@ public class TipServiceTests
             title = "New title"
         };
 
-        // Act
         var result = await _service.UpdateTipAsync("999", dto);
 
-        // Assert
         Assert.Null(result);
 
         _repositoryMock.Verify(
@@ -186,7 +175,6 @@ public class TipServiceTests
     [Fact]
     public async Task UpdateTipAsync_WhenFieldsAreEmpty_KeepsOldValues()
     {
-        // Arrange
         var existingTip = new Tip
         {
             id = "1",
@@ -210,10 +198,8 @@ public class TipServiceTests
             .Setup(r => r.UpdateAsync(It.IsAny<Tip>()))
             .Returns(Task.CompletedTask);
 
-        // Act
         var result = await _service.UpdateTipAsync("1", dto);
 
-        // Assert
         Assert.NotNull(result);
         Assert.Equal("Old title", result.title);
         Assert.Equal("travel", result.category);
@@ -223,31 +209,32 @@ public class TipServiceTests
     [Fact]
     public async Task DeleteTipAsync_WhenTipExists_ReturnsTrue()
     {
-        // Arrange
         _repositoryMock
             .Setup(r => r.DeleteAsync("1"))
             .ReturnsAsync(true);
 
-        // Act
         var result = await _service.DeleteTipAsync("1");
 
-        // Assert
         Assert.True(result);
-        _repositoryMock.Verify(r => r.DeleteAsync("1"), Times.Once);
+
+        _repositoryMock.Verify(
+            r => r.DeleteAsync("1"),
+            Times.Once);
     }
 
     [Fact]
     public async Task DeleteTipAsync_WhenTipDoesNotExist_ReturnsFalse()
     {
-        // Arrange
         _repositoryMock
             .Setup(r => r.DeleteAsync("999"))
             .ReturnsAsync(false);
 
-        // Act
         var result = await _service.DeleteTipAsync("999");
 
-        // Assert
         Assert.False(result);
+
+        _repositoryMock.Verify(
+            r => r.DeleteAsync("999"),
+            Times.Once);
     }
 }

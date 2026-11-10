@@ -1,4 +1,6 @@
+
 using Karpaty.Api.DTO;
+using Karpaty.Api.Filters;
 using Karpaty.Api.Models;
 using Karpaty.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +9,8 @@ namespace Karpaty.Api.Controllers;
 
 /// <summary>
 /// Контролер для роботи з туристичними місцями Карпат.
+/// Читати місця може будь-хто, додавати, змінювати й видаляти - тільки адміністратор
+/// (заголовок X-Admin-Key).
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -29,8 +33,11 @@ public class PlacesController : ControllerBase
     }
 
     /// <summary>
-    /// Отримати список усіх місць або відфільтрувати за категорією (waterfall, viewpoint, meadow).
+    /// Отримати список усіх місць або відфільтрувати за категорією.
     /// </summary>
+    /// <param name="category">Необов'язковий фільтр: waterfall, viewpoint або meadow.</param>
+    /// <response code="200">Список місць.</response>
+    /// <response code="400">Невідома категорія.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<Place>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -39,17 +46,11 @@ public class PlacesController : ControllerBase
         var places = await _placeService.GetAllPlacesAsync();
 
         if (string.IsNullOrWhiteSpace(category))
+        {
             return Ok(places);
+        }
 
-        var categoryMap = new Dictionary<string, PlaceCategory>(
-    StringComparer.OrdinalIgnoreCase)
-{
-    ["waterfall"] = PlaceCategory.waterfall,
-    ["viewpoint"] = PlaceCategory.viewpoint,
-    ["meadow"] = PlaceCategory.meadow
-};
-
-        if (!categoryMap.TryGetValue(category, out var selectedCategory))
+        if (!AllowedCategories.Contains(category))
         {
             return BadRequest(new
             {
@@ -58,9 +59,11 @@ public class PlacesController : ControllerBase
             });
         }
 
-        var filtered = places
-          .Where(p => p.category == selectedCategory)
-          .ToList();
+        var filtered = places.Where(p =>
+            string.Equals(
+                p.category.ToString(),
+                category,
+                StringComparison.OrdinalIgnoreCase));
 
         return Ok(filtered);
     }
@@ -68,138 +71,170 @@ public class PlacesController : ControllerBase
     /// <summary>
     /// Отримати деталі одного місця за його ID.
     /// </summary>
+    /// <param name="id">Ідентифікатор місця.</param>
+    /// <response code="200">Місце знайдено.</response>
+    /// <response code="404">Місце не знайдено (або некоректний формат ID).</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Place), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(string id)
     {
-        try
+        var place = await FindPlaceAsync(id);
+        if (place is null)
         {
-            var place = await _placeService.GetPlaceByIdAsync(id);
-            if (place is null)
-            {
-                return NotFound(new { status = 404, error = "Місце не знайдено" });
-            }
+            return NotFound(new { status = 404, error = "Місце не знайдено" });
+        }
 
-            return Ok(place);
-        }
-        catch (FormatException)
-        {
-            return NotFound(new { status = 404, error = "Місце не знайдено (некоректний формат ID)" });
-        }
+        return Ok(place);
     }
 
     /// <summary>
-    /// Додати нове місце.
+    /// Додати нове місце (тільки для адміністратора).
     /// </summary>
+    /// <remarks>
+    /// Потрібен заголовок <c>X-Admin-Key</c>. Назва має бути унікальною (без урахування регістру).
+    ///
+    /// Приклад запиту:
+    ///
+    ///     POST /api/places
+    ///     {
+    ///        "name": "Водоспад Труфанець",
+    ///        "category": "waterfall",
+    ///        "region": "Західні_Карпати",
+    ///        "description": "Мальовничий каскадний водоспад серед лісу.",
+    ///        "difficulty": "easy",
+    ///        "latitude": 48.5,
+    ///        "longitude": 24.0,
+    ///        "imageUrl": "https://example.com/trufanets.jpg"
+    ///     }
+    /// </remarks>
+    /// <param name="dto">Дані нового місця.</param>
+    /// <param name="adminKey">Адмін-ключ (перевіряє AdminKeyFilter, поле потрібне для Swagger UI).</param>
+    /// <response code="201">Місце створено, у відповіді створений запис і заголовок Location.</response>
+    /// <response code="400">Невалідні дані або місце з такою назвою вже існує.</response>
+    /// <response code="401">Заголовок X-Admin-Key відсутній або неправильний.</response>
     [HttpPost]
+    [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(typeof(Place), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Create([FromBody] CreatePlaceDTO dto)
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Create(
+        [FromBody] CreatePlaceDTO dto,
+        [FromHeader(Name = AdminKeyFilter.HeaderName)] string? adminKey = null)
     {
-        if (!Enum.IsDefined(typeof(PlaceCategory), dto.category))
+        if (await NameExistsAsync(dto.name, exceptId: null))
         {
-            return BadRequest(new { status = 400, error = "Недопустима категорія. Дозволені: waterfall, viewpoint, meadow" });
+            return BadRequest(new { status = 400, error = "Місце з такою назвою вже існує" });
         }
 
-        if (!Enum.IsDefined(typeof(PlaceDifficulty), dto.difficulty))
-        {
-            return BadRequest(new { status = 400, error = "Недопустима складність. Дозволені: easy, medium, hard" });
-        }
-
-        try
-        {
-            var createdPlace = await _placeService.CreatePlaceAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = createdPlace.id }, createdPlace);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { status = 400, error = ex.Message });
-        }
+        var createdPlace = await _placeService.CreatePlaceAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = createdPlace.id }, createdPlace);
     }
 
     /// <summary>
-    /// Оновити місце за ID.
+    /// Змінити місце за ID (тільки для адміністратора).
     /// </summary>
+    /// <remarks>
+    /// Потрібен заголовок <c>X-Admin-Key</c>. Можна передати одне поле або кілька,
+    /// поле, якого немає в запиті, не змінюється.
+    ///
+    /// Приклад запиту:
+    ///
+    ///     PUT /api/places/{id}
+    ///     {
+    ///        "description": "Оновлений опис місця.",
+    ///        "difficulty": "medium"
+    ///     }
+    /// </remarks>
+    /// <param name="id">Ідентифікатор місця.</param>
+    /// <param name="dto">Нові значення полів.</param>
+    /// <param name="adminKey">Адмін-ключ (перевіряє AdminKeyFilter, поле потрібне для Swagger UI).</param>
+    /// <response code="204">Місце оновлено.</response>
+    /// <response code="400">Невалідні дані, не передано жодного поля або така назва вже зайнята.</response>
+    /// <response code="401">Заголовок X-Admin-Key відсутній або неправильний.</response>
+    /// <response code="404">Місце не знайдено (або некоректний формат ID).</response>
     [HttpPut("{id}")]
+    [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Update(string id, [FromBody] UpdatePlaceDTO dto)
+    public async Task<IActionResult> Update(
+        string id,
+        [FromBody] UpdatePlaceDTO dto,
+        [FromHeader(Name = AdminKeyFilter.HeaderName)] string? adminKey = null)
     {
-        try
+        if (dto.name is null && dto.category is null && dto.region is null
+            && dto.description is null && dto.difficulty is null
+            && dto.latitude is null && dto.longitude is null && dto.imageUrl is null)
         {
-            var existing = await _placeService.GetPlaceByIdAsync(id);
-            if (existing is null)
-            {
-                return NotFound(new { status = 404, error = "Місце не знайдено" });
-            }
+            return BadRequest(new { status = 400, error = "Потрібно передати хоча б одне поле для оновлення" });
+        }
 
-            await _placeService.UpdatePlaceAsync(id, dto);
-            return NoContent();
-        }
-        catch (FormatException)
+        var existing = await FindPlaceAsync(id);
+        if (existing is null)
         {
-            return NotFound(new { status = 404, error = "Місце не знайдено (некоректний формат ID)" });
+            return NotFound(new { status = 404, error = "Місце не знайдено" });
         }
-        catch (Exception ex)
+
+        if (!string.IsNullOrWhiteSpace(dto.name) && await NameExistsAsync(dto.name, exceptId: existing.id))
         {
-            return BadRequest(new { status = 400, error = ex.Message });
+            return BadRequest(new { status = 400, error = "Місце з такою назвою вже існує" });
         }
+
+        await _placeService.UpdatePlaceAsync(id, dto);
+        return NoContent();
     }
 
     /// <summary>
-    /// Частково оновити місце за ID.
+    /// Видалити місце за ID (тільки для адміністратора).
     /// </summary>
-    [HttpPatch("{id}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Patch(string id, [FromBody] UpdatePlaceDTO dto)
-    {
-        try
-        {
-            var existing = await _placeService.GetPlaceByIdAsync(id);
-            if (existing is null)
-            {
-                return NotFound(new { status = 404, error = "Місце не знайдено" });
-            }
-
-            await _placeService.UpdatePlaceAsync(id, dto);
-            return NoContent();
-        }
-        catch (FormatException)
-        {
-            return NotFound(new { status = 404, error = "Місце не знайдено (некоректний формат ID)" });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { status = 400, error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Видалити місце за ID.
-    /// </summary>
+    /// <remarks>
+    /// Потрібен заголовок <c>X-Admin-Key</c>.
+    /// </remarks>
+    /// <param name="id">Ідентифікатор місця.</param>
+    /// <param name="adminKey">Адмін-ключ (перевіряє AdminKeyFilter, поле потрібне для Swagger UI).</param>
+    /// <response code="204">Місце видалено.</response>
+    /// <response code="401">Заголовок X-Admin-Key відсутній або неправильний.</response>
+    /// <response code="404">Місце не знайдено (або некоректний формат ID).</response>
     [HttpDelete("{id}")]
+    [TypeFilter(typeof(AdminKeyFilter))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(string id)
+    public async Task<IActionResult> Delete(
+        string id,
+        [FromHeader(Name = AdminKeyFilter.HeaderName)] string? adminKey = null)
+    {
+        var existing = await FindPlaceAsync(id);
+        if (existing is null)
+        {
+            return NotFound(new { status = 404, error = "Місце не знайдено" });
+        }
+
+        await _placeService.DeletePlaceAsync(id);
+        return NoContent();
+    }
+
+    // Шукає місце; некоректний формат ID трактуємо як "не знайдено"
+    private async Task<Place?> FindPlaceAsync(string id)
     {
         try
         {
-            var existing = await _placeService.GetPlaceByIdAsync(id);
-            if (existing is null)
-            {
-                return NotFound(new { status = 404, error = "Місце не знайдено" });
-            }
-
-            await _placeService.DeletePlaceAsync(id);
-            return NoContent();
+            return await _placeService.GetPlaceByIdAsync(id);
         }
         catch (FormatException)
         {
-            return NotFound(new { status = 404, error = "Місце не знайдено (некоректний формат ID)" });
+            return null;
         }
+    }
+
+    // Перевірка дубля назви без урахування регістру; exceptId виключає саме це місце при редагуванні
+    private async Task<bool> NameExistsAsync(string name, string? exceptId)
+    {
+        var all = await _placeService.GetAllPlacesAsync();
+        return all.Any(p =>
+            p.id != exceptId &&
+            string.Equals(p.name.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 }
