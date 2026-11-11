@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -8,148 +9,206 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="stylesheet" href="style.css">
-
-    <!-- Іконки FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <h1>⛰️ Карпати без натовпу</h1>
-            <p>Путівник маловідомими та спокійними куточками українських гір</p>
-        </div>
+
+    <header>
+        <h1>Карпати без натовпу</h1>
+        <p>Відкривай маловідомі куточки українських Карпат</p>
     </header>
 
-    <main class="container">
-        <!-- Секція "Здоров'я API" -->
-        <section class="section" id="health-section">
-            <h2>Стан системи</h2>
-            <div id="health-status" class="status-box" role="status">Завантаження...</div>
+    <main>
+
+        <!-- Статус API -->
+        <section id="health-section">
+            <h2>Статус сервера</h2>
+            <p id="health-status">Перевірка з'єднання...</p>
         </section>
 
-        <!-- АДМІН-ПАНЕЛЬ -->
-        <section class="section admin-card" id="admin-section">
-            <h2>🔐 Адмін-панель (Керування місцями)</h2>
-            <p class="admin-subtitle">Керуйте додаванням та видаленням туристичних місць за допомогою адмін-ключа.</p>
+        <!-- Адмін-панель -->
+        <section id="admin-section">
+            <h2>Панель адміністратора</h2>
 
-            <!-- Кнопка входу в адмінку -->
-            <div id="admin-login-box">
-                <button type="button" class="btn btn-admin" id="open-admin-btn">Увійти в адмін-панель 🔑</button>
-            </div>
+            <label for="admin-key-input">Адмін-ключ:</label>
+            <input
+                type="password"
+                id="admin-key-input"
+                placeholder="Введіть адміністративний ключ"
+            >
 
-            <!-- Форма додавання та керування (прихована до введення ключа) -->
-            <div id="admin-panel-content" style="display: none; margin-top: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: var(--primary);">Додати нове місце</h3>
-                    <button type="button" class="btn" id="logout-admin-btn" style="background: #e63946; color: white; padding: 6px 12px; font-size: 13px; border: none; border-radius: 8px; cursor: pointer;">Вийти з адмінки 🚪</button>
-                </div>
+            <h3>Додати нове місце</h3>
 
-                <form id="add-place-form" class="admin-form">
-                    <input type="text" id="place-name" placeholder="Назва місця" required>
+            <form id="add-place-form">
 
-                    <select id="place-category" required>
-                        <option value="" disabled selected>Оберіть категорію</option>
-                        <option value="waterfall">Водоспад</option>
-                        <option value="viewpoint">Оглядовий майданчик</option>
-                        <option value="meadow">Полонина</option>
-                    </select>
+                <label for="place-name">Назва місця:</label>
+                <input
+                    type="text"
+                    id="place-name"
+                    required
+                    placeholder="Наприклад, Водоспад Шипіт"
+                >
 
-                    <select id="place-region" required>
-                        <option value="" disabled selected>Оберіть регіон</option>
-                        <option value="Східні_Карпати">Східні Карпати</option>
-                        <option value="Західні_Карпати">Західні Карпати</option>
-                        <option value="Південні_Карпати">Південні Карпати</option>
-                    </select>
+                <label for="place-category">Категорія:</label>
+                <select id="place-category" required>
+                    <option value="">Оберіть категорію</option>
+                    <option value="waterfall">Водоспад</option>
+                    <option value="viewpoint">Оглядовий майданчик</option>
+                    <option value="meadow">Полонина</option>
+                </select>
 
-                    <textarea id="place-desc" placeholder="Опис місця..." rows="3" required></textarea>
+                <label for="place-region">Регіон:</label>
+                <select id="place-region" required>
+                    <option value="">Оберіть регіон</option>
+                    <option value="Східні_Карпати">Східні Карпати</option>
+                    <option value="Західні_Карпати">Західні Карпати</option>
+                    <option value="Південні_Карпати">Південні Карпати</option>
+                </select>
 
-                    <select id="place-difficulty" required>
-                        <option value="" disabled selected>Оберіть складність маршруту</option>
-                        <option value="easy">Легкий</option>
-                        <option value="medium">Середній</option>
-                        <option value="hard">Важкий</option>
-                    </select>
+                <label for="place-difficulty">Складність маршруту:</label>
+                <select id="place-difficulty" required>
+                    <option value="">Оберіть складність</option>
+                    <option value="easy">Легка</option>
+                    <option value="medium">Середня</option>
+                    <option value="hard">Складна</option>
+                </select>
 
-                    <div class="coords-row">
-                        <input type="number" step="any" id="place-lat" placeholder="Широта (наприклад, 48.16)" required>
-                        <input type="number" step="any" id="place-lng" placeholder="Довгота (наприклад, 24.50)" required>
-                    </div>
+                <label for="place-desc">Опис:</label>
+                <textarea
+                    id="place-desc"
+                    placeholder="Опис туристичного місця"
+                ></textarea>
 
-                    <input type="url" id="place-image" placeholder="Посилання на зображення (необов'язково)">
+                <label for="place-latitude">Широта:</label>
+                <input
+                    type="number"
+                    id="place-latitude"
+                    step="any"
+                    required
+                    placeholder="Наприклад, 48.12345"
+                >
 
-                    <button type="submit" class="btn btn-admin">Додати місце в базу ➕</button>
-                </form>
-            </div>
+                <label for="place-longitude">Довгота:</label>
+                <input
+                    type="number"
+                    id="place-longitude"
+                    step="any"
+                    required
+                    placeholder="Наприклад, 24.12345"
+                >
+
+                <label for="place-image">Посилання на зображення:</label>
+                <input
+                    type="url"
+                    id="place-image"
+                    placeholder="https://example.com/image.jpg"
+                >
+
+                <button type="submit">Додати місце</button>
+            </form>
         </section>
 
-        <!-- Секція Цікаві місця -->
-        <section class="section" id="places-section">
-            <h2>Цікаві місця</h2>
+        <!-- Туристичні місця -->
+        <section id="places-section">
+            <h2>Туристичні місця</h2>
 
-            <div class="filters-container">
-                <button class="filter-btn active" data-category="">Усі місця</button>
-                <button class="filter-btn" data-category="waterfall">Водоспади</button>
-                <button class="filter-btn" data-category="viewpoint">Оглядові майданчики</button>
-                <button class="filter-btn" data-category="meadow">Полонини</button>
+            <div id="filters">
+                <button class="filter-btn active" data-category="">
+                    Усі місця
+                </button>
+                <button class="filter-btn" data-category="waterfall">
+                    Водоспади
+                </button>
+                <button class="filter-btn" data-category="meadow">
+                    Полонини
+                </button>
+            </div>
+            <div id="places-container">
+                Завантаження місць...
             </div>
 
-            <div id="places-list" class="cards-grid">
-                <p class="placeholder">Дані завантажуються...</p>
+        <!-- Поради -->
+        <section id="tips-section">
+            <div id="tips-container">
+                Завантаження порад...
             </div>
-        </section>
 
-        <!-- СЕКЦІЯ ПОРАД -->
-        <section class="section" id="tips-section">
-            <h2>Поради для походу</h2>
-            <div id="tips-list" class="cards-grid">
-                <p class="placeholder">Завантаження порад...</p>
-            </div>
-        </section>
-
-        <!-- СЕКЦІЯ ВІДГУКІВ -->
-        <section class="section" id="reviews-section">
-            <h2>Відгуки відвідувачів</h2>
+        <!-- Відгуки -->
+        <section id="reviews-section">
+            <h2>Відгуки туристів</h2>
             <div id="reviews-container">
-                <p style="color: #666;">Завантаження відгуків...</p>
             </div>
         </section>
 
-        <!-- Модальне вікно -->
-        <div id="placeModal" class="modal" style="display: none;" role="dialog" aria-modal="true">
-            <div class="modal-content">
-                <span class="close-btn" tabindex="0">&times;</span>
-                <div id="modalDetails"></div>
-
-                <div class="reviews-section">
-                    <h3>Залишити відгук про це місце</h3>
-                    <form id="review-form">
-                        <input type="text" id="reviewer-name" placeholder="Ваше ім'я" required>
-                        <input type="email" id="reviewer-email" placeholder="Ваш Email" required>
-
-                        <select id="review-rating" required>
-                            <option value="" disabled selected>Оберіть оцінку</option>
-                            <option value="5">⭐⭐⭐⭐⭐ (5 - Чудово)</option>
-                            <option value="4">⭐⭐⭐⭐ (4 - Добре)</option>
-                            <option value="3">⭐⭐⭐ (3 - Нормально)</option>
-                            <option value="2">⭐⭐ (2 - Погано)</option>
-                            <option value="1">⭐ (1 - Жахливо)</option>
-                        </select>
-
-                        <textarea id="review-text" placeholder="Ваш коментар..." rows="3" required></textarea>
-
-                        <button type="submit" class="btn btn-primary">Надіслати відгук</button>
-                    </form>
-                </div>
-            </div>
-        </div>
     </main>
 
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 Karpaty Guide — Командний проєкт</p>
+    <!-- Модальне вікно місця -->
+    <div id="place-modal" class="modal">
+        <div class="modal-content">
+
+            <button
+                type="button"
+                class="close-btn"
+                aria-label="Закрити"
+            >
+                &times;
+            </button>
+
+
+            <h3>Залишити відгук</h3>
+
+
+                <label for="reviewer-name">Ваше ім'я:</label>
+                <input
+                    type="text"
+                    id="reviewer-name"
+                    required
+                >
+
+                <label for="reviewer-email">Email:</label>
+                <input
+                    type="email"
+                    id="reviewer-email"
+                    required
+                >
+
+                <label for="review-rating">Оцінка:</label>
+                <select id="review-rating" required>
+                    <option value="5">5 — Відмінно</option>
+                    <option value="4">4 — Добре</option>
+                    <option value="3">3 — Нормально</option>
+                    <option value="2">2 — Погано</option>
+                    <option value="1">1 — Дуже погано</option>
+                </select>
+
+                <label for="review-text">Ваш відгук:</label>
+                <textarea
+                    id="review-text"
+                    required
+                    placeholder="Поділіться враженнями..."
+                ></textarea>
+
+                <button type="submit">Надіслати відгук</button>
+            </form>
+
         </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Карпати без натовпу</p>
     </footer>
 
     <script src="script.js"></script>
 </body>
 </html>
+            <form id="review-form">
+            <div id="modalDetails"></div>
+                id="close-modal"
+                Завантаження відгуків...
+        </section>
+            <h2>Поради туристам</h2>
+        </section>
+
+                </button>
+
