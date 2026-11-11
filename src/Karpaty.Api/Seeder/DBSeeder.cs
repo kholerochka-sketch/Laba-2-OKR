@@ -1,0 +1,146 @@
+﻿using Karpaty.Api.DBCommunication.Reposetories;
+using Karpaty.Api.DBCommunication.Repositories.Interfaces;
+using Karpaty.Api.Models;
+
+namespace Karpaty.Api.Seeder
+{
+    
+    public static class DBSeeder
+    {
+        public static async Task SeedPlacesAsync(IServiceProvider serviceProvider)
+        {
+            using var scope = serviceProvider.CreateScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IPlaceRepository>();
+
+            var existingPlaces = await repository.GetAllAsync();
+
+            if (existingPlaces == null || existingPlaces.Count == 0)
+            {
+                var placesToSeed = new List<Place>
+                {
+                    new Place
+                    {
+                        name = "Водоспад Шипіт",
+                        category = PlaceCategory.waterfall,
+                        region = PlaceRegion.Західні_Карпати,
+                        difficulty = PlaceDifficulty.easy,
+                        latitude = 48.6565f,
+                        longitude = 23.2694f,
+                        description = "Один з найкрасивіших водоспадів Закарпаття, розташований біля підніжжя гори Гемба. Висота падіння води — 14 метрів.",
+                        imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Shypit_waterfall.jpg/800px-Shypit_waterfall.jpg"
+                    },
+                    new Place
+                    {
+                        name = "Полонина Боржава",
+                        category = PlaceCategory.meadow,
+                        region = PlaceRegion.Західні_Карпати,
+                        difficulty = PlaceDifficulty.medium,
+                        latitude = 48.6253f,
+                        longitude = 23.2798f,
+                        description = "Гірський масив (полонина) на Закарпатті. Найдовша полонина Закарпаття, ідеальна для піших походів і збору чорниці.",
+                        imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Borzhava_panorama.jpg/800px-Borzhava_panorama.jpg"
+                    },
+                    new Place
+                    {
+                        name = "Говерла",
+                        category = PlaceCategory.viewpoint,
+                        region = PlaceRegion.Східні_Карпати,
+                        difficulty = PlaceDifficulty.hard,
+                        latitude = 48.1602f,
+                        longitude = 24.5000f,
+                        description = "Найвища вершина Українських Карпат та найвища точка України (2061 м). Популярний туристичний маршрут.",
+                        imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Hoverla_mountain.jpg/800px-Hoverla_mountain.jpg"
+                    },
+                    new Place
+                    {
+                        name = "Манявський водоспад",
+                        category = PlaceCategory.waterfall,
+                        region = PlaceRegion.Східні_Карпати,
+                        difficulty = PlaceDifficulty.medium,
+                        latitude = 48.6247f,
+                        longitude = 24.3644f,
+                        description = "Один із найвищих водоспадів Українських Карпат (близько 20 метрів). Розташований у мальовничій гірській ущелині.",
+                        imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Manyava_waterfall.jpg/800px-Manyava_waterfall.jpg"
+                    },
+                    new Place
+                    {
+                        name = "Полонина Хом'яків",
+                        category = PlaceCategory.meadow,
+                        region = PlaceRegion.Східні_Карпати,
+                        difficulty = PlaceDifficulty.medium,
+                        latitude = 48.3739f,
+                        longitude = 24.5004f,
+                        description = "Велика галявина біля підніжжя гори Хом'як, де влітку випасають худобу. Звідси відкриваються чудові краєвиди на Чорногірський хребет.",
+                        imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Khomyak_mountain.jpg/800px-Khomyak_mountain.jpg"
+                    },
+                    new Place
+                    {
+                        name = "Водоспад Пробій",
+                        category = PlaceCategory.waterfall,
+                        region = PlaceRegion.Східні_Карпати,
+                        difficulty = PlaceDifficulty.easy,
+                        latitude = 48.4390f,
+                        longitude = 24.5397f,
+                        description = "Повноводний водоспад на річці Прут у місті Яремче. Вода тут падає з 8-метрової висоти. Є пішохідний місток над водоспадом.",
+                        imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Probij_waterfall.jpg/800px-Probij_waterfall.jpg"
+                    },
+                    new Place
+                    {
+                        name = "Скелі Довбуша",
+                        category = PlaceCategory.viewpoint,
+                        region = PlaceRegion.Східні_Карпати,
+                        difficulty = PlaceDifficulty.easy,
+                        latitude = 49.0436f,
+                        longitude = 23.6828f,
+                        description = "Унікальний скельно-печерний комплекс. Скелі утворилися понад 70 млн років тому на дні палеогенового моря.",
+                        imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Dovbush_rocks.jpg/800px-Dovbush_rocks.jpg"
+                    },
+                    new Place
+                    {
+                        name = "Піп Іван Чорногірський",
+                        category = PlaceCategory.viewpoint,
+                        region = PlaceRegion.Східні_Карпати,
+                        difficulty = PlaceDifficulty.hard,
+                        latitude = 48.0475f,
+                        longitude = 24.6277f,
+                        description = "Одна з найвищих вершин (2028 м). Відома завдяки кам'яній обсерваторії «Білий Слон» на самій вершині.",
+                        imageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Pip_Ivan_observatory.jpg/800px-Pip_Ivan_observatory.jpg"
+                    }
+                };
+
+                foreach (var place in placesToSeed)
+                {
+                    await repository.CreateAsync(place);
+                }
+            }
+        
+        
+        
+        }
+   public static async Task SeedTipsAsync(IServiceProvider serviceProvider)
+{
+    using var scope = serviceProvider.CreateScope();
+    var repository = scope.ServiceProvider.GetRequiredService<ITipRepository>();
+
+    var existing = await repository.GetAllAsync();
+    if (existing.Count > 0) return;
+
+    var tips = new List<Tip>
+    {
+        new() { title = "Зручне взуття", category = "спорядження", text = "Беріть трекінгове взуття з протектором і вже розношене: нове майже гарантовано натре." },
+        new() { title = "Одяг шарами", category = "спорядження", text = "Базовий шар, утеплювач і вітро-водозахисна куртка. У горах температура різко змінюється." },
+        new() { title = "Скажіть, куди йдете", category = "безпека", text = "Повідомте рідним маршрут і час повернення. Збережіть номер рятувальної служби 112." },
+        new() { title = "Заряджений телефон і павербанк", category = "безпека", text = "Завантажте офлайн-карту маршруту: зв'язок у горах часто зникає." },
+        new() { title = "Дивіться прогноз", category = "погода", text = "Перевіряйте прогноз перед виходом. Грози в горах небезпечні, найкраще вирушати зранку." },
+        new() { title = "Не залишайте стежку", category = "поведінка", text = "Не зрізайте повороти й не лякайте тварин. Тримайтеся марковування, щоб не збивати природу." },
+        new() { title = "Забирайте сміття з собою", category = "прибирання", text = "Усе, що принесли, заберіть назад: упаковку, фольгу, недопалки." }
+    };
+
+    foreach (var tip in tips)
+    {
+        await repository.CreateAsync(tip);
+    }
+}
+    }
+}
+
