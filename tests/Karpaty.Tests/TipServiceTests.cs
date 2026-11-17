@@ -18,6 +18,7 @@ public class TipServiceTests
 
     public TipServiceTests()
     {
+        // Arrange: створення mock-репозиторію та сервісу
         _repositoryMock = new Mock<ITipRepository>();
         _service = new TipService(_repositoryMock.Object);
     }
@@ -41,6 +42,23 @@ public class TipServiceTests
 
         // Assert
         Assert.Equal(2, result.Count());
+        Assert.Equal(tips, result);
+        _repositoryMock.Verify(r => r.GetAllAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllTipsAsync_WhenNoTipsExist_ReturnsEmptyCollection()
+    {
+        // Arrange
+        _repositoryMock
+            .Setup(r => r.GetAllAsync())
+            .ReturnsAsync(new List<Tip>());
+
+        // Act
+        var result = await _service.GetAllTipsAsync();
+
+        // Assert
+        Assert.Empty(result);
         _repositoryMock.Verify(r => r.GetAllAsync(), Times.Once);
     }
 
@@ -65,6 +83,7 @@ public class TipServiceTests
 
         // Assert
         Assert.NotNull(result);
+        Assert.Equal("1", result.id);
         Assert.Equal("Travel tip", result.title);
         _repositoryMock.Verify(r => r.GetByIdAsync("1"), Times.Once);
     }
@@ -82,17 +101,28 @@ public class TipServiceTests
 
         // Assert
         Assert.Null(result);
+        _repositoryMock.Verify(r => r.GetByIdAsync("999"), Times.Once);
     }
 
-    [Fact]
-    public async Task CreateTipAsync_TrimsAndNormalizesFields()
+    [Theory]
+    [InlineData("  Travel advice  ", "  TRAVEL  ", "  Be careful  ",
+        "Travel advice", "travel", "Be careful")]
+    [InlineData(" Safety rules ", " SAFETY ", " Stay alert ",
+        "Safety rules", "safety", "Stay alert")]
+    public async Task CreateTipAsync_TrimsAndNormalizesFields(
+        string title,
+        string category,
+        string text,
+        string expectedTitle,
+        string expectedCategory,
+        string expectedText)
     {
         // Arrange
         var dto = new CreateTipDTO
         {
-            title = "  Travel advice  ",
-            category = "  TRAVEL  ",
-            text = "  Be careful  "
+            title = title,
+            category = category,
+            text = text
         };
 
         Tip? createdTip = null;
@@ -106,12 +136,14 @@ public class TipServiceTests
         var result = await _service.CreateTipAsync(dto);
 
         // Assert
-        Assert.Equal("Travel advice", result.title);
-        Assert.Equal("travel", result.category);
-        Assert.Equal("Be careful", result.text);
+        Assert.Equal(expectedTitle, result.title);
+        Assert.Equal(expectedCategory, result.category);
+        Assert.Equal(expectedText, result.text);
 
         Assert.NotNull(createdTip);
-        Assert.Equal("travel", createdTip.category);
+        Assert.Equal(expectedTitle, createdTip.title);
+        Assert.Equal(expectedCategory, createdTip.category);
+        Assert.Equal(expectedText, createdTip.text);
 
         _repositoryMock.Verify(
             r => r.CreateAsync(It.IsAny<Tip>()),
@@ -154,9 +186,8 @@ public class TipServiceTests
         Assert.Equal("safety", result.category);
         Assert.Equal("New text", result.text);
 
-        _repositoryMock.Verify(
-            r => r.UpdateAsync(existingTip),
-            Times.Once);
+        _repositoryMock.Verify(r => r.GetByIdAsync("1"), Times.Once);
+        _repositoryMock.Verify(r => r.UpdateAsync(existingTip), Times.Once);
     }
 
     [Fact]
@@ -178,6 +209,7 @@ public class TipServiceTests
         // Assert
         Assert.Null(result);
 
+        _repositoryMock.Verify(r => r.GetByIdAsync("999"), Times.Once);
         _repositoryMock.Verify(
             r => r.UpdateAsync(It.IsAny<Tip>()),
             Times.Never);
@@ -218,6 +250,59 @@ public class TipServiceTests
         Assert.Equal("Old title", result.title);
         Assert.Equal("travel", result.category);
         Assert.Equal("Old text", result.text);
+
+        _repositoryMock.Verify(r => r.UpdateAsync(existingTip), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(" ", "travel", "text")]
+    [InlineData("title", " ", "text")]
+    [InlineData("title", "travel", " ")]
+    public async Task UpdateTipAsync_WhenOneFieldIsEmpty_KeepsThatOldValue(
+        string title,
+        string category,
+        string text)
+    {
+        // Arrange
+        var existingTip = new Tip
+        {
+            id = "1",
+            title = "Old title",
+            category = "old-category",
+            text = "Old text"
+        };
+
+        var dto = new UpdateTipDTO
+        {
+            title = title,
+            category = category,
+            text = text
+        };
+
+        _repositoryMock
+            .Setup(r => r.GetByIdAsync("1"))
+            .ReturnsAsync(existingTip);
+
+        _repositoryMock
+            .Setup(r => r.UpdateAsync(It.IsAny<Tip>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.UpdateTipAsync("1", dto);
+
+        // Assert
+        Assert.NotNull(result);
+
+        if (string.IsNullOrWhiteSpace(title))
+            Assert.Equal("Old title", result.title);
+
+        if (string.IsNullOrWhiteSpace(category))
+            Assert.Equal("old-category", result.category);
+
+        if (string.IsNullOrWhiteSpace(text))
+            Assert.Equal("Old text", result.text);
+
+        _repositoryMock.Verify(r => r.UpdateAsync(existingTip), Times.Once);
     }
 
     [Fact]
@@ -249,5 +334,6 @@ public class TipServiceTests
 
         // Assert
         Assert.False(result);
+        _repositoryMock.Verify(r => r.DeleteAsync("999"), Times.Once);
     }
 }
