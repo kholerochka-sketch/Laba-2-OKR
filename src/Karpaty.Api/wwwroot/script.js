@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPlaces();
     loadTips();
     setupFilters();
+    setupRandomPlace();
     setupModal();
     setupReviewForm();
     setupAdminPanel();
@@ -455,3 +456,40 @@ window.deletePlace = async function (id) {
         alert('Помилка мережі.');
     }
 };
+
+// Випадкове місце
+function setupRandomPlace() {
+    const btn = document.getElementById('random-place-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Шукаємо...';
+
+        try {
+            const response = await fetch('/api/places/random');
+
+            if (response.status === 404) {
+                alert('Місць поки немає — нічого обирати 🙁');
+                return;
+            }
+            if (!response.ok) throw new Error('Помилка отримання випадкового місця');
+
+            const place = await response.json();
+            const placeId = place.id || place._id;
+
+            // Модалка шукає місце в allPlacesData, а там може бути відфільтрований список
+            if (!allPlacesData.some(p => (p.id || p._id) === placeId)) {
+                allPlacesData.push(place);
+            }
+            window.openModalById(placeId);
+        } catch (error) {
+            console.error(error);
+            alert('Не вдалося отримати випадкове місце. Спробуйте ще раз.');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    });
+}
