@@ -47,6 +47,19 @@ namespace Karpaty.Api.Services
             return await _placeRepository.GetByCategoryAsync(parsedCategory);
         }
 
+        public async Task<Models.Place?> GetRandomPlaceAsync()
+        {
+            _logger.LogInformation("Запит на отримання випадкового туристичного місця.");
+
+            var place = await _placeRepository.GetRandomAsync();
+            if (place is null)
+            {
+                _logger.LogWarning("Випадкове місце не знайдено: база порожня.");
+            }
+
+            return place;
+        }
+
         public async Task<Models.Place> CreatePlaceAsync(CreatePlaceDTO dto)
         {
             _logger.LogInformation("Спроба створення нового місця: {Name}", dto.name);

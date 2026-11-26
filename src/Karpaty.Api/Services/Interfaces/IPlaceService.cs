@@ -7,6 +7,7 @@ namespace Karpaty.Api.Services.Interfaces
         Task<IEnumerable<Place>> GetAllPlacesAsync();
         Task<Place> GetPlaceByIdAsync(string id);
         Task<IEnumerable<Place>> GetPlacesByCategoryAsync(string categoryString);
+        Task<Place?> GetRandomPlaceAsync();
         Task<Place> CreatePlaceAsync(CreatePlaceDTO dto);
         Task<Place> UpdatePlaceAsync(string id, UpdatePlaceDTO dto);
         Task<bool> DeletePlaceAsync(string id);
