@@ -5,4 +5,5 @@
   <Folder Name="/tests/">
     <Project Path="tests/Karpaty.Tests/Karpaty.Tests.csproj" />
   </Folder>
+  <Project Path="../../MIa/WebApplication1/WebApplication1.csproj" />
 </Solution>
