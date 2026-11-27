@@ -41,29 +41,6 @@ namespace Karpaty.Api.DBCommunication.Reposetories
             var documents = await _collection.Find(filter).ToListAsync();
             return documents.Select(ToModel).ToList();
         }
-        /// <summary>
-        /// Повертає випадкове місце: рахує документи й робить Skip на випадкову позицію.
-        /// Якщо колекція порожня — повертає null.
-        /// </summary>
-        public async Task<Place?> GetRandomAsync()
-        {
-            var count = await _collection.CountDocumentsAsync(FilterDefinition<PlaceDocument>.Empty);
-            if (count == 0)
-            {
-                return null;
-            }
-
-            var skip = Random.Shared.Next((int)count);
-
-            var document = await _collection
-                .Find(FilterDefinition<PlaceDocument>.Empty)
-                .Skip(skip)
-                .Limit(1)
-                .FirstOrDefaultAsync();
-
-            return document != null ? ToModel(document) : null;
-        }
-
         public async Task CreateAsync(Place place)
         {
             var document = ToDocument(place);
