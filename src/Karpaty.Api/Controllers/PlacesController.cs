@@ -97,51 +97,6 @@ public class PlacesController : ControllerBase
     }
 
     /// <summary>
-    /// Отримати випадкове місце для поїздки з наявних у базі.
-    /// </summary>
-    /// <remarks>
-    /// Приклад запиту:
-    ///
-    ///     GET /api/places/random
-    ///
-    /// Приклад відповіді (200 OK):
-    ///
-    ///     {
-    ///        "id": "65f1a2b3c4d5e6f7a8b9c0d1",
-    ///        "name": "Водоспад Шипіт",
-    ///        "category": "waterfall",
-    ///        "region": "Західні_Карпати",
-    ///        "description": "Один із наймальовничіших водоспадів Карпат.",
-    ///        "difficulty": "easy",
-    ///        "latitude": 48.6558,
-    ///        "longitude": 23.2694,
-    ///        "imageUrl": "https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=800"
-    ///     }
-    ///
-    /// Приклад відповіді, якщо в базі немає жодного місця (404 Not Found):
-    ///
-    ///     {
-    ///        "status": 404,
-    ///        "error": "Місць поки немає"
-    ///     }
-    /// </remarks>
-    /// <response code="200">Повертає випадкове туристичне місце.</response>
-    /// <response code="404">У базі даних немає жодного місця.</response>
-    [HttpGet("random")]
-    [ProducesResponseType(typeof(Place), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetRandom()
-    {
-        var place = await _placeService.GetRandomPlaceAsync();
-        if (place is null)
-        {
-            return NotFound(new { status = 404, error = "Місць поки немає" });
-        }
-
-        return Ok(place);
-    }
-
-    /// <summary>
     /// Отримати деталі одного місця за його ID.
     /// </summary>
     /// <remarks>
